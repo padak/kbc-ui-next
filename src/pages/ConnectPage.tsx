@@ -12,15 +12,11 @@ import { ROUTES } from '@/lib/constants';
 
 export function ConnectPage() {
   const navigate = useNavigate();
-  const { isConnected, hydrate } = useConnectionStore();
+  const isConnected = useConnectionStore((s) => s.isConnected);
   const { connect, isPending, error } = useConnect();
 
   const [stackUrl, setStackUrl] = useState(import.meta.env.VITE_STACK_URL ?? '');
   const [token, setToken] = useState(import.meta.env.VITE_STORAGE_TOKEN ?? '');
-
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
 
   useEffect(() => {
     if (isConnected) {

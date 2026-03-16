@@ -1,6 +1,6 @@
 // file: stores/connection.ts
 // Zustand store for stack connection state (URL + token).
-// Persists to localStorage so the user stays connected across reloads.
+// Hydrates from localStorage SYNCHRONOUSLY at store creation time.
 // Used by: api/client.ts, hooks/useAuth.ts, ConnectPage.tsx.
 // This is the ONLY place connection credentials are stored.
 
@@ -15,15 +15,19 @@ type ConnectionState = {
   isConnected: boolean;
   connect: (stackUrl: string, token: string, projectName: string, tokenDescription: string) => void;
   disconnect: () => void;
-  hydrate: () => void;
 };
 
+// Hydrate synchronously from localStorage at store creation
+// This avoids race conditions with route guards checking isConnected
+const initialStackUrl = localStorage.getItem(STORAGE_KEY.STACK_URL) ?? '';
+const initialToken = localStorage.getItem(STORAGE_KEY.TOKEN) ?? '';
+
 export const useConnectionStore = create<ConnectionState>((set) => ({
-  stackUrl: '',
-  token: '',
+  stackUrl: initialStackUrl,
+  token: initialToken,
   projectName: '',
   tokenDescription: '',
-  isConnected: false,
+  isConnected: !!initialStackUrl && !!initialToken,
 
   connect: (stackUrl, token, projectName, tokenDescription) => {
     localStorage.setItem(STORAGE_KEY.STACK_URL, stackUrl);
@@ -35,13 +39,5 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
     localStorage.removeItem(STORAGE_KEY.STACK_URL);
     localStorage.removeItem(STORAGE_KEY.TOKEN);
     set({ stackUrl: '', token: '', projectName: '', tokenDescription: '', isConnected: false });
-  },
-
-  hydrate: () => {
-    const stackUrl = localStorage.getItem(STORAGE_KEY.STACK_URL) ?? '';
-    const token = localStorage.getItem(STORAGE_KEY.TOKEN) ?? '';
-    if (stackUrl && token) {
-      set({ stackUrl, token, isConnected: true });
-    }
   },
 }));

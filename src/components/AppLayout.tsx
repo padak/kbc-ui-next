@@ -2,19 +2,14 @@
 // Root layout: sidebar + main content area with Outlet.
 // Guards routes - redirects to ConnectPage if not connected.
 // Used by: App.tsx as the parent route for all authenticated pages.
-// Hydrates connection from localStorage on mount.
+// Connection state is hydrated synchronously in the store.
 
-import { useEffect } from 'react';
 import { Outlet, Navigate } from 'react-router';
 import { useConnectionStore } from '@/stores/connection';
 import { Sidebar } from './Sidebar';
 
 export function AppLayout() {
-  const { isConnected, hydrate } = useConnectionStore();
-
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
+  const isConnected = useConnectionStore((s) => s.isConnected);
 
   if (!isConnected) {
     return <Navigate to="/" replace />;
