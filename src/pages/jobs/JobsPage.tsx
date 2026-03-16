@@ -11,7 +11,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { DataTable } from '@/components/DataTable';
 import { useJobs } from '@/hooks/useJobs';
 import { formatRelativeTime } from '@/lib/formatters';
-import type { Job } from '@/api/types';
+import type { Job } from '@/api/schemas';
 
 const STATUS_FILTERS = ['all', 'processing', 'success', 'error', 'waiting', 'terminated'] as const;
 

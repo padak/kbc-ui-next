@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { useConfigurations } from '@/hooks/useComponents';
 import { DataTable } from '@/components/DataTable';
 import { formatDate } from '@/lib/formatters';
-import type { Configuration } from '@/api/types';
+import type { Configuration } from '@/api/schemas';
 import { useNavigate } from 'react-router';
 
 const ORCHESTRATOR_ID = 'keboola.orchestrator';

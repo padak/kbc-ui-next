@@ -28,7 +28,7 @@ export function TableDetailPage() {
     <div>
       <PageHeader
         title={table.displayName || table.name}
-        description={`${table.bucket.stage}.${table.bucket.name}`}
+        description={table.bucket ? `${table.bucket.stage}.${table.bucket.name}` : ''}
         actions={
           <button
             onClick={() => navigate(`/storage/${encodeURIComponent(bucketId ?? '')}`)}

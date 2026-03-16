@@ -1,43 +1,12 @@
 // file: api/jobs.ts
 // Queue/Jobs API: list and manage jobs via /search/jobs endpoint.
-// Note: Jobs use the Queue API, not Storage API. URL differs.
+// All responses validated through Zod schemas before reaching UI.
 // Used by: hooks/useJobs.ts, pages/jobs/*.
 // Queue URL derived from stack URL (connection.* -> queue.*).
 
-import { useConnectionStore } from '@/stores/connection';
-import { HTTP_HEADERS } from '@/lib/constants';
-import { KeboolaApiError } from './client';
-import type { Job } from './types';
-
-async function fetchQueueApi<T>(path: string): Promise<T> {
-  const { stackUrl, token } = useConnectionStore.getState();
-  if (!stackUrl || !token) {
-    throw new KeboolaApiError('Not connected', 401, 'NOT_CONNECTED');
-  }
-
-  // Queue API URL is derived from stack URL
-  // e.g., https://connection.north-europe.azure.keboola.com -> https://queue.north-europe.azure.keboola.com
-  const queueUrl = stackUrl.replace('connection.', 'queue.');
-
-  const response = await fetch(`${queueUrl}${path}`, {
-    headers: {
-      [HTTP_HEADERS.STORAGE_API_TOKEN]: token,
-      [HTTP_HEADERS.CONTENT_TYPE]: 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    let body: { message?: string; code?: string } = {};
-    try { body = await response.json(); } catch { /* not json */ }
-    throw new KeboolaApiError(
-      body.message ?? `Queue API error: ${response.status}`,
-      response.status,
-      body.code ?? 'UNKNOWN',
-    );
-  }
-
-  return response.json() as Promise<T>;
-}
+import { z } from 'zod';
+import { fetchQueueApi } from './client';
+import { JobSchema } from './schemas';
 
 export const jobsApi = {
   listJobs(params?: { limit?: number; offset?: number; status?: string; componentId?: string }) {
@@ -47,10 +16,10 @@ export const jobsApi = {
     if (params?.status) searchParams.set('status', params.status);
     if (params?.componentId) searchParams.set('component', params.componentId);
     const query = searchParams.toString();
-    return fetchQueueApi<Job[]>(`/search/jobs?${query}`);
+    return fetchQueueApi(`/search/jobs?${query}`, z.array(JobSchema));
   },
 
   getJob(jobId: string) {
-    return fetchQueueApi<Job>(`/jobs/${jobId}`);
+    return fetchQueueApi(`/jobs/${jobId}`, JobSchema);
   },
 };

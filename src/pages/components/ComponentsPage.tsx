@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { useComponents } from '@/hooks/useComponents';
-import type { Component } from '@/api/types';
+import type { Component } from '@/api/schemas';
 
 const TYPE_LABELS: Record<string, string> = {
   extractor: 'Extractors',

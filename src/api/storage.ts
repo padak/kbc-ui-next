@@ -1,40 +1,47 @@
 // file: api/storage.ts
 // Storage API methods: buckets, tables, token verification.
-// Thin wrappers around fetchApi with typed responses.
+// All responses validated through Zod schemas before reaching UI.
 // Used by: hooks/useStorage.ts, hooks/useAuth.ts.
 // Reference: GET /v2/storage/buckets, /tables, /tokens/verify.
 
+import { z } from 'zod';
 import { fetchApi, fetchManageApi } from './client';
-import type { Bucket, Table, TokenVerifyResponse } from './types';
+import { BucketSchema, TableSchema, TokenVerifySchema } from './schemas';
 
 export const storageApi = {
   verifyToken(stackUrl: string, token: string) {
-    return fetchManageApi<TokenVerifyResponse>(stackUrl, '/tokens/verify', token);
+    return fetchManageApi(stackUrl, '/tokens/verify', token, TokenVerifySchema);
   },
 
   listBuckets() {
-    return fetchApi<Bucket[]>('/buckets');
+    return fetchApi('/buckets', z.array(BucketSchema));
   },
 
   getBucket(bucketId: string) {
-    return fetchApi<Bucket>(`/buckets/${bucketId}`);
+    return fetchApi(`/buckets/${bucketId}`, BucketSchema);
   },
 
   listTables(params?: { include?: string }) {
     const query = params?.include ? `?include=${params.include}` : '';
-    return fetchApi<Table[]>(`/tables${query}`);
+    return fetchApi(`/tables${query}`, z.array(TableSchema));
   },
 
   listBucketTables(bucketId: string) {
-    return fetchApi<Table[]>(`/buckets/${bucketId}/tables`);
+    return fetchApi(`/buckets/${bucketId}/tables`, z.array(TableSchema));
   },
 
   getTable(tableId: string) {
-    return fetchApi<Table>(`/tables/${tableId}?include=columns,metadata,columnMetadata`);
+    return fetchApi(
+      `/tables/${tableId}?include=columns,metadata,columnMetadata`,
+      TableSchema,
+    );
   },
 
   getTableDataPreview(tableId: string, params?: { limit?: number }) {
     const limit = params?.limit ?? 100;
-    return fetchApi<string>(`/tables/${tableId}/data-preview?limit=${limit}&format=json`);
+    return fetchApi(
+      `/tables/${tableId}/data-preview?limit=${limit}&format=json`,
+      z.unknown(),
+    );
   },
 };

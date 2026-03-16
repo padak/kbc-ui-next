@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { useComponent, useConfigurations } from '@/hooks/useComponents';
 import { formatDate } from '@/lib/formatters';
-import type { Configuration } from '@/api/types';
+import type { Configuration } from '@/api/schemas';
 
 const COLUMNS = [
   {

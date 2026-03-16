@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { useBuckets } from '@/hooks/useStorage';
 import { formatBytes, formatDate } from '@/lib/formatters';
-import type { Bucket } from '@/api/types';
+import type { Bucket } from '@/api/schemas';
 
 const COLUMNS = [
   {
@@ -40,7 +40,7 @@ const COLUMNS = [
     key: 'size',
     label: 'Size',
     render: (b: Bucket) => formatBytes(b.dataSizeBytes),
-    sortValue: (b: Bucket) => b.dataSizeBytes,
+    sortValue: (b: Bucket) => b.dataSizeBytes ?? 0,
   },
   {
     key: 'lastChange',

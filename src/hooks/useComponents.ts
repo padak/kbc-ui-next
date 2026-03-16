@@ -7,7 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { componentsApi } from '@/api/components';
 import { useConnectionStore } from '@/stores/connection';
-import type { Component } from '@/api/types';
+import type { Component } from '@/api/schemas';
 
 export function useComponents() {
   const isConnected = useConnectionStore((s) => s.isConnected);
