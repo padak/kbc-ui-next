@@ -18,6 +18,7 @@ import { ComponentsPage } from '@/pages/components/ComponentsPage';
 import { ConfigurationsPage } from '@/pages/components/ConfigurationsPage';
 import { ConfigurationDetailPage } from '@/pages/components/ConfigurationDetailPage';
 import { JobsPage } from '@/pages/jobs/JobsPage';
+import { JobDetailPage } from '@/pages/jobs/JobDetailPage';
 import { FlowsPage } from '@/pages/flows/FlowsPage';
 import { TransformationsPage } from '@/pages/transformations/TransformationsPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
@@ -49,6 +50,7 @@ export function App() {
             <Route path="/flows" element={<FlowsPage />} />
             <Route path="/transformations" element={<TransformationsPage />} />
             <Route path="/jobs" element={<JobsPage />} />
+            <Route path="/jobs/:jobId" element={<JobDetailPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

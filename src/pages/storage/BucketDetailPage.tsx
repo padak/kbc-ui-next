@@ -21,20 +21,20 @@ const COLUMNS = [
   {
     key: 'columns',
     label: 'Columns',
-    render: (t: Table) => t.columns.length,
-    sortValue: (t: Table) => t.columns.length,
+    render: (t: Table) => t.columns?.length ?? '-',
+    sortValue: (t: Table) => t.columns?.length ?? 0,
   },
   {
     key: 'rows',
     label: 'Rows',
     render: (t: Table) => formatNumber(t.rowsCount),
-    sortValue: (t: Table) => t.rowsCount,
+    sortValue: (t: Table) => t.rowsCount ?? 0,
   },
   {
     key: 'size',
     label: 'Size',
     render: (t: Table) => formatBytes(t.dataSizeBytes),
-    sortValue: (t: Table) => t.dataSizeBytes,
+    sortValue: (t: Table) => t.dataSizeBytes ?? 0,
   },
   {
     key: 'lastImport',

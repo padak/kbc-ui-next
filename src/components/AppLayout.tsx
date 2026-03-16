@@ -7,6 +7,7 @@
 import { Outlet, Navigate } from 'react-router';
 import { useConnectionStore } from '@/stores/connection';
 import { Sidebar } from './Sidebar';
+import { ErrorBoundary } from './ErrorBoundary';
 
 export function AppLayout() {
   const isConnected = useConnectionStore((s) => s.isConnected);
@@ -19,7 +20,9 @@ export function AppLayout() {
     <div className="flex h-screen">
       <Sidebar />
       <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );
