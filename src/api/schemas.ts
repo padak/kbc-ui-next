@@ -88,25 +88,32 @@ export const TokenVerifySchema = z.object({
 
 // -- Components --
 
+// Based on StackComponent & Component from legacy api-client types.ts
 export const ComponentSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string().default('other'), // extractor | writer | application | transformation | other
+  type: z.string().default('other'),
   description: z.string().default(''),
-  longDescription: z.string().nullable().default(null),
+  longDescription: z.string().nullable().optional(),
   categories: z.array(z.string()).default([]),
   version: z.number().default(0),
-  ico32: z.string().default(''),
-  ico64: z.string().default(''),
-  ico128: z.string().default(''),
+  complexity: z.string().nullable().optional(),
+  hasUI: z.boolean().default(false),
+  hasRun: z.boolean().default(true),
+  ico32: z.string().nullable().optional(),
+  ico64: z.string().nullable().default(''),
+  ico128: z.string().nullable().default(''),
+  uri: z.string().default(''),
   data: z.record(z.string(), z.unknown()).default({}),
+  features: z.array(z.unknown()).default([]),
   flags: z.array(z.string()).default([]),
-  configurationSchema: z.record(z.string(), z.unknown()).nullable().default(null),
-  configurationRowSchema: z.record(z.string(), z.unknown()).nullable().default(null),
-  emptyConfiguration: z.record(z.string(), z.unknown()).nullable().default(null),
-  emptyConfigurationRow: z.record(z.string(), z.unknown()).nullable().default(null),
-  uiOptions: z.array(z.string()).default([]),
-  documentationUrl: z.string().nullable().default(null),
+  configurationSchema: z.record(z.string(), z.unknown()).optional(),
+  configurationRowSchema: z.record(z.string(), z.unknown()).optional(),
+  emptyConfiguration: z.record(z.string(), z.unknown()).optional(),
+  emptyConfigurationRow: z.record(z.string(), z.unknown()).optional(),
+  uiOptions: z.record(z.string(), z.unknown()).optional(), // Record, not array!
+  documentationUrl: z.string().nullable().optional(),
+  configurations: z.array(z.record(z.string(), z.unknown())).optional(),
 }).passthrough();
 
 export const ConfigurationRowSchema = z.object({
