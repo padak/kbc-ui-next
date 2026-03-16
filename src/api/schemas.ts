@@ -21,6 +21,7 @@ export const MetadataItemSchema = z.object({
 export const BucketSchema = z.object({
   id: z.string(),
   name: z.string(),
+  displayName: z.string().default(''),
   stage: z.string(), // 'in' | 'out' | 'sys' and potentially others
   description: z.string().default(''),
   created: z.string(),
@@ -28,10 +29,10 @@ export const BucketSchema = z.object({
   isReadOnly: z.boolean().default(false),
   dataSizeBytes: z.number().nullable().default(0),
   rowsCount: z.number().nullable().default(0),
-  tables: z.array(z.string()).default([]),
+  tables: z.string().default(''), // URL to tables endpoint, not an array
+  backend: z.string().default(''),
   metadata: z.array(MetadataItemSchema).default([]),
-  displayName: z.string().default(''),
-});
+}).passthrough(); // allow extra fields we don't use yet
 
 export const TableSchema = z.object({
   id: z.string(),
@@ -53,7 +54,7 @@ export const TableSchema = z.object({
   columnMetadata: z.record(z.string(), z.array(MetadataItemSchema)).default({}),
   isTyped: z.boolean().default(false),
   isAlias: z.boolean().default(false),
-});
+}).passthrough();
 
 // -- Token --
 
@@ -83,7 +84,7 @@ export const TokenVerifySchema = z.object({
   }).optional(),
   bucketPermissions: z.record(z.string(), z.string()).default({}),
   componentAccess: z.array(z.string()).default([]),
-});
+}).passthrough();
 
 // -- Components --
 
@@ -106,7 +107,7 @@ export const ComponentSchema = z.object({
   emptyConfigurationRow: z.record(z.string(), z.unknown()).nullable().default(null),
   uiOptions: z.array(z.string()).default([]),
   documentationUrl: z.string().nullable().default(null),
-});
+}).passthrough();
 
 export const ConfigurationRowSchema = z.object({
   id: z.string(),
@@ -115,7 +116,7 @@ export const ConfigurationRowSchema = z.object({
   isDisabled: z.boolean().default(false),
   configuration: z.record(z.string(), z.unknown()).default({}),
   state: z.record(z.string(), z.unknown()).default({}),
-});
+}).passthrough();
 
 export const ConfigurationSchema = z.object({
   id: z.string(),
@@ -136,7 +137,7 @@ export const ConfigurationSchema = z.object({
     }),
     changeDescription: z.string().default(''),
   }),
-});
+}).passthrough();
 
 // -- Jobs (Queue API) --
 
@@ -161,7 +162,7 @@ export const JobSchema = z.object({
   project: z.object({
     id: z.string(),
   }).default({ id: '' }),
-});
+}).passthrough();
 
 // -- Derived TypeScript types (use these instead of api/types.ts) --
 

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { useBuckets } from '@/hooks/useStorage';
-import { formatBytes, formatDate } from '@/lib/formatters';
+import { formatBytes, formatDate, formatNumber } from '@/lib/formatters';
 import type { Bucket } from '@/api/schemas';
 
 const COLUMNS = [
@@ -31,10 +31,10 @@ const COLUMNS = [
     sortValue: (b: Bucket) => b.displayName || b.name,
   },
   {
-    key: 'tables',
-    label: 'Tables',
-    render: (b: Bucket) => b.tables.length,
-    sortValue: (b: Bucket) => b.tables.length,
+    key: 'rows',
+    label: 'Rows',
+    render: (b: Bucket) => formatNumber(b.rowsCount),
+    sortValue: (b: Bucket) => b.rowsCount ?? 0,
   },
   {
     key: 'size',
