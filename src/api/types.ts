@@ -140,22 +140,25 @@ export type ConfigurationRow = {
 };
 
 export type Job = {
-  id: number;
+  id: string;
+  runId: string;
+  parentRunId: string | null;
   status: 'created' | 'waiting' | 'processing' | 'success' | 'error' | 'warning' | 'terminating' | 'terminated' | 'cancelled';
   component: string;
   config: string;
-  configRow: string | null;
+  configRowIds: string[];
   mode: string;
   createdTime: string;
   startTime: string | null;
   endTime: string | null;
   durationSeconds: number | null;
   result: Record<string, unknown>;
-  metrics: {
-    storage: {
-      inputTablesBytesSum: number;
-      outputTablesBytesSum: number;
-    };
+  token: {
+    id: string;
+    description: string;
+  };
+  project: {
+    id: string;
   };
 };
 

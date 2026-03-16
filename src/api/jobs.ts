@@ -1,8 +1,8 @@
 // file: api/jobs.ts
-// Queue/Jobs API: list and manage jobs.
+// Queue/Jobs API: list and manage jobs via /search/jobs endpoint.
 // Note: Jobs use the Queue API, not Storage API. URL differs.
 // Used by: hooks/useJobs.ts, pages/jobs/*.
-// TODO: Queue API base URL comes from stack services discovery.
+// Queue URL derived from stack URL (connection.* -> queue.*).
 
 import { useConnectionStore } from '@/stores/connection';
 import { HTTP_HEADERS } from '@/lib/constants';
@@ -47,10 +47,10 @@ export const jobsApi = {
     if (params?.status) searchParams.set('status', params.status);
     if (params?.componentId) searchParams.set('component', params.componentId);
     const query = searchParams.toString();
-    return fetchQueueApi<Job[]>(`/jobs?${query}`);
+    return fetchQueueApi<Job[]>(`/search/jobs?${query}`);
   },
 
-  getJob(jobId: number) {
+  getJob(jobId: string) {
     return fetchQueueApi<Job>(`/jobs/${jobId}`);
   },
 };

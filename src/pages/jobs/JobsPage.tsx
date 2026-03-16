@@ -20,7 +20,7 @@ const COLUMNS = [
     key: 'id',
     label: 'ID',
     render: (j: Job) => <span className="font-mono text-xs">{j.id}</span>,
-    sortValue: (j: Job) => j.id,
+    sortValue: (j: Job) => Number(j.id),
   },
   {
     key: 'component',
@@ -94,7 +94,7 @@ export function JobsPage() {
         keyFn={(j) => String(j.id)}
         searchFn={(j, q) =>
           j.component.toLowerCase().includes(q) ||
-          String(j.id).includes(q) ||
+          j.id.includes(q) ||
           j.config.includes(q)
         }
         onRowClick={(j) => navigate(`/jobs/${j.id}`)}

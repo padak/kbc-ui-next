@@ -22,7 +22,7 @@ export function useJobs(params?: { limit?: number; status?: string; componentId?
   });
 }
 
-export function useJob(jobId: number) {
+export function useJob(jobId: string) {
   const isConnected = useConnectionStore((s) => s.isConnected);
 
   return useQuery({

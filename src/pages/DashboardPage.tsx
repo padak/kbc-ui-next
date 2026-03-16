@@ -80,7 +80,7 @@ export function DashboardPage() {
                   onClick={() => navigate(`${ROUTES.JOBS}/${job.id}`)}
                   className="cursor-pointer hover:bg-gray-50"
                 >
-                  <td className="px-4 py-3 text-sm font-mono text-gray-600">{job.id}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-gray-500">{job.id}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{job.component}</td>
                   <td className="px-4 py-3"><StatusBadge status={job.status} /></td>
                   <td className="px-4 py-3 text-sm text-gray-500">{formatRelativeTime(job.createdTime)}</td>
