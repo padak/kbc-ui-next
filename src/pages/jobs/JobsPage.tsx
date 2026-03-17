@@ -1,57 +1,38 @@
 // file: pages/jobs/JobsPage.tsx
-// Jobs listing: recent jobs with status, component, duration.
-// Auto-refreshes every 10 seconds. Filterable by status.
+// Jobs listing with resolved component/config names and icons.
+// Mirrors legacy UI: Component (icon+name+type), Configuration, Duration, Created, Status.
 // Used by: App.tsx route /jobs.
-// Data from: hooks/useJobs.ts (useJobs).
+// Data from: hooks/useJobs.ts, hooks/useComponentLookup.ts.
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/StatusBadge';
-import { DataTable } from '@/components/DataTable';
 import { useJobs } from '@/hooks/useJobs';
+import { useComponentLookup } from '@/hooks/useComponentLookup';
 import { formatRelativeTime } from '@/lib/formatters';
 import type { Job } from '@/api/schemas';
 
-const STATUS_FILTERS = ['all', 'processing', 'success', 'error', 'waiting', 'terminated'] as const;
+const STATUS_FILTERS = ['all', 'processing', 'success', 'error', 'waiting', 'terminated', 'cancelled'] as const;
 
-const COLUMNS = [
-  {
-    key: 'id',
-    label: 'ID',
-    render: (j: Job) => <span className="font-mono text-xs">{j.id}</span>,
-    sortValue: (j: Job) => Number(j.id),
-  },
-  {
-    key: 'component',
-    label: 'Component',
-    render: (j: Job) => j.component,
-    sortValue: (j: Job) => j.component,
-  },
-  {
-    key: 'config',
-    label: 'Config',
-    render: (j: Job) => j.config || '-',
-  },
-  {
-    key: 'status',
-    label: 'Status',
-    render: (j: Job) => <StatusBadge status={j.status} />,
-    sortValue: (j: Job) => j.status,
-  },
-  {
-    key: 'duration',
-    label: 'Duration',
-    render: (j: Job) => j.durationSeconds != null ? `${j.durationSeconds}s` : '-',
-    sortValue: (j: Job) => j.durationSeconds ?? 0,
-  },
-  {
-    key: 'created',
-    label: 'Created',
-    render: (j: Job) => formatRelativeTime(j.createdTime),
-    sortValue: (j: Job) => j.createdTime,
-  },
-];
+const TYPE_LABELS: Record<string, string> = {
+  extractor: 'Data Source',
+  writer: 'Data Destination',
+  application: 'Application',
+  transformation: 'Transformation',
+  other: '',
+};
+
+function formatDuration(seconds: number | null | undefined): string {
+  if (seconds == null || seconds === 0) return '-';
+  if (seconds < 60) return `${seconds} sec`;
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  if (min < 60) return sec > 0 ? `${min} min ${sec} sec` : `${min} min`;
+  const hrs = Math.floor(min / 60);
+  const remainMin = min % 60;
+  return `${hrs} hr ${remainMin} min`;
+}
 
 export function JobsPage() {
   const navigate = useNavigate();
@@ -60,6 +41,7 @@ export function JobsPage() {
     limit: 100,
     status: statusFilter === 'all' ? undefined : statusFilter,
   });
+  const { getComponentName, getComponentType, getComponentIcon, getConfigName } = useComponentLookup();
 
   return (
     <div>
@@ -88,19 +70,75 @@ export function JobsPage() {
         <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error.message}</div>
       )}
 
-      <DataTable
-        columns={COLUMNS}
-        data={jobs ?? []}
-        keyFn={(j) => String(j.id)}
-        searchFn={(j, q) =>
-          j.component.toLowerCase().includes(q) ||
-          j.id.includes(q) ||
-          j.config.includes(q)
-        }
-        onRowClick={(j) => navigate(`/jobs/${j.id}`)}
-        isLoading={isLoading}
-        emptyMessage="No jobs found"
-      />
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12 text-gray-400">Loading jobs...</div>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-gray-200">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Component</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Configuration</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Duration</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Created</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {!jobs?.length ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
+                    No jobs found
+                  </td>
+                </tr>
+              ) : (
+                jobs.map((job: Job) => {
+                  const compName = getComponentName(job.component);
+                  const compType = getComponentType(job.component);
+                  const compIcon = getComponentIcon(job.component);
+                  const cfgName = getConfigName(job.component, job.config);
+                  const typeLabel = TYPE_LABELS[compType] ?? compType;
+
+                  return (
+                    <tr
+                      key={job.id}
+                      onClick={() => navigate(`/jobs/${job.id}`)}
+                      className="cursor-pointer hover:bg-gray-50"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          {compIcon && (
+                            <img src={compIcon} alt="" className="h-6 w-6 rounded" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{compName}</p>
+                            {typeLabel && (
+                              <p className="text-xs text-gray-400">{typeLabel}</p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm text-gray-700">{cfgName}</p>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                        {formatDuration(job.durationSeconds)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm text-gray-600">{formatRelativeTime(job.createdTime)}</p>
+                        <p className="text-xs text-gray-400">{job.token.description}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={job.status} />
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
