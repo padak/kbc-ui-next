@@ -18,6 +18,7 @@ import { useConfiguration, useComponent } from '@/hooks/useComponents';
 import { useDeleteConfiguration } from '@/hooks/useComponents';
 import { useUpdateConfiguration } from '@/hooks/useMutations';
 import { useComponentLookup } from '@/hooks/useComponentLookup';
+import { flowToMermaid, flowToText } from '@/lib/flowToMermaid';
 import { formatDate } from '@/lib/formatters';
 import type { ConfigurationRow } from '@/api/schemas';
 
@@ -54,6 +55,7 @@ export function ConfigurationDetailPage() {
   const deleteConfig = useDeleteConfiguration(componentId ?? '');
   const updateConfig = useUpdateConfiguration(componentId ?? '', configId ?? '');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
   const { getComponentName, getComponentIcon, getConfigName } = useComponentLookup();
 
   const isFlow = componentId === 'keboola.orchestrator' || componentId === 'keboola.flow';
@@ -120,7 +122,33 @@ export function ConfigurationDetailPage() {
       {/* Flow Builder (for orchestrator/flow components) */}
       {isFlow && config.configuration && (
         <div className="mb-6">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Flow Builder</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Flow Builder</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const mermaid = flowToMermaid(config.configuration as Record<string, unknown>, { getComponentName, getConfigName });
+                  navigator.clipboard.writeText(mermaid);
+                  setCopiedFormat('mermaid');
+                  setTimeout(() => setCopiedFormat(null), 2000);
+                }}
+                className="rounded border border-gray-300 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+              >
+                {copiedFormat === 'mermaid' ? 'Copied!' : 'Copy Mermaid'}
+              </button>
+              <button
+                onClick={() => {
+                  const text = flowToText(config.configuration as Record<string, unknown>, { getComponentName, getConfigName });
+                  navigator.clipboard.writeText(text);
+                  setCopiedFormat('text');
+                  setTimeout(() => setCopiedFormat(null), 2000);
+                }}
+                className="rounded border border-gray-300 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+              >
+                {copiedFormat === 'text' ? 'Copied!' : 'Copy as Text'}
+              </button>
+            </div>
+          </div>
           <FlowBuilder
             configuration={config.configuration as Record<string, unknown>}
             componentLookup={{ getComponentName, getComponentIcon, getConfigName }}
