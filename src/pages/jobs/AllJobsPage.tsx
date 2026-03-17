@@ -33,7 +33,7 @@ export function AllJobsPage() {
   const navigate = useNavigate();
   const { setActiveProject } = useConnectionStore();
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const { data: jobs, isLoading } = useAllProjectsJobs({ limit: 30 });
+  const { data: jobs, isLoading, isPartial, loadedCount, totalCount, failedCount } = useAllProjectsJobs({ limit: 30 });
   const { getComponentName, getComponentType } = useComponentLookup();
 
   const filtered =
@@ -70,9 +70,16 @@ export function AllJobsPage() {
         ))}
       </div>
 
+      {isPartial && (
+        <div className="mb-3 rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+          Loaded {loadedCount}/{totalCount} projects ({jobs.length} jobs)
+          {failedCount > 0 && ` - ${failedCount} failed`}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12 text-gray-400">
-          Loading jobs from all projects...
+          Loading jobs from {totalCount} projects...
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-200">

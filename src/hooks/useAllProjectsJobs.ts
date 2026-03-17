@@ -1,8 +1,8 @@
 // file: hooks/useAllProjectsJobs.ts
 // Fetches recent jobs from ALL registered projects in parallel.
-// Merges results sorted by createdTime for the multi-project jobs view.
+// Progressive: shows results as each project responds (no waiting for all).
 // Used by: pages/jobs/AllJobsPage.tsx.
-// Uses useQueries for parallel per-project fetching.
+// Aggressive caching: staleTime 30s, results appear instantly on revisit.
 
 import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
@@ -27,10 +27,12 @@ export function useAllProjectsJobs(params?: { limit?: number }) {
           { stackUrl: project.stackUrl, token: project.token },
           { limit },
         ),
-      refetchInterval: 15_000,
+      staleTime: 30_000,
+      refetchInterval: 30_000,
     })),
   });
 
+  // Progressive: merge whatever data we have so far (not waiting for all)
   const allJobs = useMemo(() => {
     const merged: MultiProjectJob[] = [];
     queries.forEach((query, index) => {
@@ -45,7 +47,11 @@ export function useAllProjectsJobs(params?: { limit?: number }) {
     return merged;
   }, [queries, projects]);
 
-  const isLoading = queries.some((q) => q.isLoading);
+  const loadedCount = queries.filter((q) => q.data || q.error).length;
+  const totalCount = projects.length;
+  const isLoading = loadedCount === 0;
+  const isPartial = loadedCount > 0 && loadedCount < totalCount;
+  const failedCount = queries.filter((q) => q.error).length;
 
-  return { data: allJobs, isLoading };
+  return { data: allJobs, isLoading, isPartial, loadedCount, totalCount, failedCount };
 }
