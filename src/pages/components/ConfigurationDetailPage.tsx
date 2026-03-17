@@ -217,6 +217,7 @@ export function ConfigurationDetailPage() {
           });
         }}
         isSaving={updateConfig.isPending}
+        jsonOnly={isFlow}
       />
 
       <ConfirmModal

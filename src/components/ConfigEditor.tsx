@@ -12,12 +12,13 @@ type ConfigEditorProps = {
   values: Record<string, unknown>;
   onSave: (values: Record<string, unknown>) => Promise<void>;
   isSaving: boolean;
+  jsonOnly?: boolean; // Force JSON-only view (e.g., for flows where FlowBuilder is the visual editor)
 };
 
 type ViewTab = 'form' | 'json';
 
-export function ConfigEditor({ schema, values, onSave, isSaving }: ConfigEditorProps) {
-  const hasSchema = schema !== null && schema !== undefined && Object.keys(schema).length > 0;
+export function ConfigEditor({ schema, values, onSave, isSaving, jsonOnly = false }: ConfigEditorProps) {
+  const hasSchema = !jsonOnly && schema !== null && schema !== undefined && Object.keys(schema).length > 0;
   const [activeTab, setActiveTab] = useState<ViewTab>(hasSchema ? 'form' : 'json');
   const [formValues, setFormValues] = useState<Record<string, unknown>>(values);
   const [jsonText, setJsonText] = useState(JSON.stringify(values, null, 2));
