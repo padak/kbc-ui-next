@@ -74,8 +74,12 @@ export function ConfigurationDetailPage() {
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {config.rows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-4 py-2 text-sm font-medium text-gray-700">{row.name || row.id}</td>
+                  <tr
+                    key={row.id}
+                    onClick={() => navigate(`/components/${encodeURIComponent(componentId ?? '')}/${configId}/rows/${row.id}`)}
+                    className="cursor-pointer hover:bg-gray-50"
+                  >
+                    <td className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800">{row.name || row.id}</td>
                     <td className="px-4 py-2 text-sm text-gray-500">{row.description || '-'}</td>
                     <td className="px-4 py-2">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${

@@ -17,6 +17,7 @@ import { TableDetailPage } from '@/pages/storage/TableDetailPage';
 import { ComponentsPage } from '@/pages/components/ComponentsPage';
 import { ConfigurationsPage } from '@/pages/components/ConfigurationsPage';
 import { ConfigurationDetailPage } from '@/pages/components/ConfigurationDetailPage';
+import { ConfigurationRowPage } from '@/pages/components/ConfigurationRowPage';
 import { JobsPage } from '@/pages/jobs/JobsPage';
 import { JobDetailPage } from '@/pages/jobs/JobDetailPage';
 import { FlowsPage } from '@/pages/flows/FlowsPage';
@@ -47,6 +48,7 @@ export function App() {
             <Route path="/components" element={<ComponentsPage />} />
             <Route path="/components/:componentId" element={<ConfigurationsPage />} />
             <Route path="/components/:componentId/:configId" element={<ConfigurationDetailPage />} />
+            <Route path="/components/:componentId/:configId/rows/:rowId" element={<ConfigurationRowPage />} />
             <Route path="/flows" element={<FlowsPage />} />
             <Route path="/transformations" element={<TransformationsPage />} />
             <Route path="/jobs" element={<JobsPage />} />
