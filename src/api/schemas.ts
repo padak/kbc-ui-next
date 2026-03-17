@@ -164,7 +164,7 @@ export const JobSchema = z.object({
   startTime: z.string().nullable().default(null),
   endTime: z.string().nullable().default(null),
   durationSeconds: z.number().nullable().default(null),
-  result: z.record(z.string(), z.unknown()).default({}),
+  result: z.unknown().default({}), // can be {} (record) or [] (empty array)
   token: z.object({
     id: z.string(),
     description: z.string(),
