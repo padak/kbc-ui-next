@@ -89,4 +89,32 @@ export const manageApi = {
     }
     return response.json();
   },
+
+  // Delete a Storage API token (cleanup on org removal)
+  async deleteToken(stackUrl: string, manageToken: string, tokenId: string): Promise<void> {
+    const url = `${stackUrl}/manage/tokens/${tokenId}`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: { [MANAGE_TOKEN_HEADER]: manageToken },
+    });
+    if (!response.ok && response.status !== 404) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(
+        (body as Record<string, string>).message ?? `Failed to delete token: ${response.status}`,
+      );
+    }
+  },
+
+  // Get token ID by verifying a storage token
+  async getTokenId(stackUrl: string, storageToken: string): Promise<string> {
+    const url = `${stackUrl}/v2/storage/tokens/verify`;
+    const response = await fetch(url, {
+      headers: { 'X-StorageApi-Token': storageToken },
+    });
+    if (!response.ok) {
+      throw new Error(`Token verify failed: ${response.status}`);
+    }
+    const data = await response.json();
+    return String(data.id);
+  },
 };

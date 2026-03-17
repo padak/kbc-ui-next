@@ -82,11 +82,42 @@ export function SetupPage() {
     await handleSave(updated);
   }
 
-  async function handleRemoveOrg(orgId: string) {
+  const [removeOrgId, setRemoveOrgId] = useState<string | null>(null);
+  const [removeManageToken, setRemoveManageToken] = useState('');
+  const [removeAlsoFromKeboola, setRemoveAlsoFromKeboola] = useState(false);
+  const [removeProgress, setRemoveProgress] = useState('');
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  async function handleRemoveOrg() {
+    if (!removeOrgId) return;
+    const org = config.organizations.find((o) => o.id === removeOrgId);
+    if (!org) return;
+
+    setRemoveError(null);
+
+    // Delete tokens from Keboola if requested
+    if (removeAlsoFromKeboola && removeManageToken) {
+      for (const project of org.projects) {
+        try {
+          setRemoveProgress(`Deleting token for ${project.name}...`);
+          const tokenId = await manageApi.getTokenId(org.stack, project.token);
+          await manageApi.deleteToken(org.stack, removeManageToken, tokenId);
+        } catch (err) {
+          // Continue on error - token might already be deleted or expired
+          console.warn(`Failed to delete token for ${project.name}:`, err);
+        }
+      }
+      setRemoveProgress('');
+    }
+
+    // Remove locally
     const updated = {
-      organizations: config.organizations.filter((o) => o.id !== orgId),
+      organizations: config.organizations.filter((o) => o.id !== removeOrgId),
     };
     await handleSave(updated);
+    setRemoveOrgId(null);
+    setRemoveManageToken('');
+    setRemoveAlsoFromKeboola(false);
   }
 
   if (isLoading) {
@@ -123,7 +154,7 @@ export function SetupPage() {
             key={org.id}
             org={org}
             onUpdate={(updatedOrg) => handleUpdateOrg(org.id, updatedOrg)}
-            onRemove={() => handleRemoveOrg(org.id)}
+            onRemove={() => setRemoveOrgId(org.id)}
           />
         ))}
 
@@ -158,6 +189,66 @@ export function SetupPage() {
             Back to Connect
           </Link>
         </div>
+
+        {/* Remove organization dialog */}
+        {removeOrgId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setRemoveOrgId(null)}>
+            <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <h3 className="mb-3 text-lg font-semibold text-gray-900">Remove Organization</h3>
+              <p className="mb-4 text-sm text-gray-600">
+                This will remove the organization and all its project tokens from your local configuration.
+              </p>
+
+              <label className="mb-4 flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={removeAlsoFromKeboola}
+                  onChange={(e) => setRemoveAlsoFromKeboola(e.target.checked)}
+                  className="mt-0.5 rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-700">
+                  Also delete the created tokens from Keboola (requires Management Token)
+                </span>
+              </label>
+
+              {removeAlsoFromKeboola && (
+                <div className="mb-4">
+                  <label className="mb-1 block text-xs font-medium text-gray-600">Management API Token</label>
+                  <input
+                    type="password"
+                    value={removeManageToken}
+                    onChange={(e) => setRemoveManageToken(e.target.value)}
+                    placeholder="Required to delete tokens from Keboola"
+                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+
+              {removeProgress && (
+                <div className="mb-3 rounded-md bg-blue-50 p-2 text-xs text-blue-700">{removeProgress}</div>
+              )}
+              {removeError && (
+                <div className="mb-3 rounded-md bg-red-50 p-2 text-xs text-red-700">{removeError}</div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => { setRemoveOrgId(null); setRemoveManageToken(''); setRemoveAlsoFromKeboola(false); }}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRemoveOrg}
+                  disabled={removeAlsoFromKeboola && !removeManageToken}
+                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:bg-red-400"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
