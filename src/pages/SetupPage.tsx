@@ -469,23 +469,21 @@ function AddOrgForm({ existingOrgIds, onAdd, onCancel }: AddOrgFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [isAutoDiscovering, setIsAutoDiscovering] = useState(false);
+  const [discoveredOrgs, setDiscoveredOrgs] = useState<Array<{ id: number; name: string }>>([]);
 
   async function handleAutoDiscover() {
     setError(null);
     setIsAutoDiscovering(true);
+    setDiscoveredOrgs([]);
     try {
       const orgs = await manageApi.listOrganizations(stack, manageToken);
-      if (orgs.length === 1) {
-        // Single org - auto-fill
-        setOrgId(String(orgs[0]!.id));
-        setOrgName(orgs[0]!.name);
-      } else if (orgs.length > 1) {
-        // Multiple orgs - let user pick (fill first, show info)
-        setOrgId(String(orgs[0]!.id));
-        setOrgName(orgs[0]!.name);
-        setError(`Found ${orgs.length} organizations: ${orgs.map(o => `${o.name} (${o.id})`).join(', ')}. First one selected - change Organization ID if needed.`);
-      } else {
+      if (orgs.length === 0) {
         setError('No organizations found for this token.');
+      } else {
+        setDiscoveredOrgs(orgs);
+        // Auto-select first one
+        setOrgId(String(orgs[0]!.id));
+        setOrgName(orgs[0]!.name);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Auto-discover failed. Enter Organization ID manually.');
@@ -594,42 +592,55 @@ function AddOrgForm({ existingOrgIds, onAdd, onCancel }: AddOrgFormProps) {
           </p>
         </div>
 
-        {stack && manageToken && !orgId && (
-          <button
-            onClick={handleAutoDiscover}
-            disabled={isAutoDiscovering}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 disabled:text-gray-400"
-          >
-            {isAutoDiscovering ? 'Discovering...' : 'Auto-detect Organization'}
-          </button>
+        {stack && manageToken && (
+          <div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  Organization
+                </label>
+                {discoveredOrgs.length > 0 ? (
+                  <select
+                    value={orgId}
+                    onChange={(e) => {
+                      const selected = discoveredOrgs.find((o) => String(o.id) === e.target.value);
+                      setOrgId(e.target.value);
+                      setOrgName(selected?.name ?? '');
+                      setProjects([]);
+                    }}
+                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    {discoveredOrgs.map((o) => (
+                      <option key={o.id} value={String(o.id)}>
+                        {o.name} ({o.id})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={orgId}
+                    onChange={(e) => setOrgId(e.target.value)}
+                    placeholder="Enter Organization ID or use Discover"
+                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                )}
+              </div>
+              <button
+                onClick={handleAutoDiscover}
+                disabled={isAutoDiscovering || !stack || !manageToken}
+                className="shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 disabled:text-gray-400"
+              >
+                {isAutoDiscovering ? 'Loading...' : discoveredOrgs.length > 0 ? 'Refresh' : 'Discover Orgs'}
+              </button>
+            </div>
+            {discoveredOrgs.length > 0 && (
+              <p className="mt-1 text-[10px] text-gray-400">
+                Found {discoveredOrgs.length} organization{discoveredOrgs.length !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
         )}
-
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              Organization ID
-            </label>
-            <input
-              type="text"
-              value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
-              placeholder="e.g. 141"
-              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex-1">
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              Organization Name (optional)
-            </label>
-            <input
-              type="text"
-              value={orgName}
-              onChange={(e) => setOrgName(e.target.value)}
-              placeholder="My Organization"
-              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-        </div>
 
         {error && <div className="rounded-md bg-red-50 p-2 text-xs text-red-700">{error}</div>}
 
