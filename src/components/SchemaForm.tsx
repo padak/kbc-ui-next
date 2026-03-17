@@ -129,10 +129,12 @@ function FormField({
     );
   }
 
-  // Array of strings -> textarea (one item per line)
+  // Array handling
   if (propSchema.type === 'array') {
     const arrayValue = Array.isArray(value) ? value : [];
-    const textValue = arrayValue.join('\n');
+    // Complex arrays (objects) -> show as JSON
+    const hasObjects = arrayValue.some((v) => typeof v === 'object' && v !== null);
+    const textValue = hasObjects ? JSON.stringify(arrayValue, null, 2) : arrayValue.join('\n');
     return (
       <div>
         <label htmlFor={fieldName} className="mb-1 block text-sm font-medium text-gray-700">
@@ -143,12 +145,36 @@ function FormField({
           id={fieldName}
           value={textValue}
           onChange={(e) => {
-            const lines = e.target.value.split('\n').filter((line) => line.trim() !== '');
-            onChange(lines);
+            if (hasObjects) {
+              try { onChange(JSON.parse(e.target.value)); } catch { /* invalid JSON, ignore */ }
+            } else {
+              const lines = e.target.value.split('\n').filter((line) => line.trim() !== '');
+              onChange(lines);
+            }
           }}
-          placeholder={placeholder ?? 'One item per line'}
-          rows={3}
+          placeholder={hasObjects ? 'JSON array' : (placeholder ?? 'One item per line')}
+          rows={hasObjects ? 8 : 3}
           className="block w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        />
+        {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: description }} />}
+      </div>
+    );
+  }
+
+  // Complex values that don't match their schema type -> show as JSON textarea
+  if (typeof value === 'object' && value !== null) {
+    return (
+      <div>
+        <label htmlFor={fieldName} className="mb-1 block text-sm font-medium text-gray-700">
+          {label}
+          {required && <span className="ml-0.5 text-red-500">*</span>}
+        </label>
+        <textarea
+          id={fieldName}
+          value={JSON.stringify(value, null, 2)}
+          onChange={(e) => { try { onChange(JSON.parse(e.target.value)); } catch { /* invalid JSON */ } }}
+          rows={6}
+          className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 font-mono text-xs shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
         {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: description }} />}
       </div>
