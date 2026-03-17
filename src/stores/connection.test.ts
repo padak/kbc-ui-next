@@ -89,6 +89,8 @@ describe('connection store', () => {
         token: 'token-a',
         projectId: 100,
         projectName: 'Project A',
+        organizationId: '1',
+        organizationName: 'Org A',
         tokenDescription: 'Token A',
       },
       {
@@ -97,6 +99,8 @@ describe('connection store', () => {
         token: 'token-b',
         projectId: 200,
         projectName: 'Project B',
+        organizationId: '2',
+        organizationName: 'Org B',
         tokenDescription: 'Token B',
       },
     ];
@@ -120,6 +124,8 @@ describe('connection store', () => {
         token: 'token-a',
         projectId: 100,
         projectName: 'Project A',
+        organizationId: '1',
+        organizationName: 'Org A',
         tokenDescription: 'Token A',
       },
       {
@@ -128,6 +134,8 @@ describe('connection store', () => {
         token: 'token-b',
         projectId: 200,
         projectName: 'Project B',
+        organizationId: '2',
+        organizationName: 'Org B',
         tokenDescription: 'Token B',
       },
     ];
@@ -151,6 +159,8 @@ describe('connection store', () => {
         token: 'token-a',
         projectId: 100,
         projectName: 'Project A',
+        organizationId: '1',
+        organizationName: 'Org A',
         tokenDescription: 'Token A',
       },
     ];

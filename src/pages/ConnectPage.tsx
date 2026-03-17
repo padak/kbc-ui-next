@@ -36,10 +36,7 @@ export function ConnectPage() {
     // Don't auto-reconnect if user explicitly disconnected (resets on tab close)
     if (sessionStorage.getItem('kbc_disconnected')) return;
 
-    const hasEnvProjects = !!import.meta.env.VITE_PROJECTS;
-    const hasSingleProject = !!import.meta.env.VITE_STACK_URL && !!import.meta.env.VITE_STORAGE_TOKEN;
-
-    if (!hasEnvProjects && !hasSingleProject) return;
+    // loadProjects() checks projects.secret.json first, then env vars
 
     setLoading(true);
     loadProjects()
@@ -144,6 +141,12 @@ export function ConnectPage() {
             {isPending ? 'Connecting...' : 'Connect'}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-xs text-gray-400">
+          <a href="/setup" className="text-blue-600 hover:underline">
+            Manage Organizations
+          </a>
+        </p>
       </div>
     </div>
   );

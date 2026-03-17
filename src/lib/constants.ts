@@ -18,6 +18,7 @@ export const STORAGE_KEY = {
 
 export const ROUTES = {
   CONNECT: '/',
+  SETUP: '/setup',
   DASHBOARD: '/dashboard',
   STORAGE: '/storage',
   STORAGE_TABLE: '/storage/:bucketId/:tableId',

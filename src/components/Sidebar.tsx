@@ -24,15 +24,14 @@ type SidebarProps = {
   onToggle: () => void;
 };
 
-function groupByStack(projects: ProjectEntry[]): Record<string, ProjectEntry[]> {
+function groupByOrg(projects: ProjectEntry[]): Record<string, ProjectEntry[]> {
   const groups: Record<string, ProjectEntry[]> = {};
   for (const project of projects) {
-    // Extract a short stack label from URL: "connection.north-europe.azure.keboola.com" -> "north-europe.azure"
-    const stackLabel = extractStackLabel(project.stackUrl);
-    if (!groups[stackLabel]) {
-      groups[stackLabel] = [];
+    const orgLabel = project.organizationName || `Org ${project.organizationId}` || extractStackLabel(project.stackUrl);
+    if (!groups[orgLabel]) {
+      groups[orgLabel] = [];
     }
-    groups[stackLabel].push(project);
+    groups[orgLabel].push(project);
   }
   return groups;
 }
@@ -57,7 +56,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     useConnectionStore();
 
   const hasMultipleProjects = projects.length > 1;
-  const groupedProjects = hasMultipleProjects ? groupByStack(projects) : {};
+  const groupedProjects = hasMultipleProjects ? groupByOrg(projects) : {};
 
   return (
     <aside

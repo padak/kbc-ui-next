@@ -1,15 +1,35 @@
 // file: lib/projectLoader.ts
-// Loads project configurations from VITE_PROJECTS env var or single project env vars.
+// Loads project configurations from projects.secret.json, env vars, or single project env vars.
 // Verifies each token and enriches with project/org metadata from the API.
 // Used by: ConnectPage.tsx on startup, stores/connection.ts.
 // Falls back to VITE_STACK_URL + VITE_STORAGE_TOKEN for single project.
 
-import { storageApi } from '@/api/storage';
+import { fetchManageApi } from '@/api/client';
+import { TokenVerifySchema } from '@/api/schemas';
+import { loadProjectConfig } from '@/lib/projectConfig';
 import type { ProjectEntry } from '@/stores/connection';
 
 type RawProject = { stack: string; token: string };
 
 export async function loadProjects(): Promise<ProjectEntry[]> {
+  // 1. Try projects.secret.json
+  const config = await loadProjectConfig();
+  if (config.organizations.length > 0) {
+    return config.organizations.flatMap((org) =>
+      org.projects.map((p) => ({
+        id: String(p.id),
+        stackUrl: org.stack.replace(/\/+$/, ''),
+        token: p.token,
+        projectId: Number(p.id),
+        projectName: p.name,
+        organizationId: org.id,
+        organizationName: org.name,
+        tokenDescription: '',
+      })),
+    );
+  }
+
+  // 2. Fallback to env vars
   const rawProjects = getRawProjects();
 
   if (rawProjects.length === 0) {
@@ -20,13 +40,20 @@ export async function loadProjects(): Promise<ProjectEntry[]> {
   const entries = await Promise.allSettled(
     rawProjects.map(async (raw) => {
       const normalized = raw.stack.replace(/\/+$/, '');
-      const tokenInfo = await storageApi.verifyToken(normalized, raw.token);
+      const tokenInfo = await fetchManageApi(
+        normalized,
+        '/tokens/verify',
+        raw.token,
+        TokenVerifySchema,
+      );
       return {
         id: String(tokenInfo.owner.id),
         stackUrl: normalized,
         token: raw.token,
         projectId: tokenInfo.owner.id,
         projectName: tokenInfo.owner.name,
+        organizationId: '',
+        organizationName: '',
         tokenDescription: tokenInfo.description,
       } satisfies ProjectEntry;
     }),

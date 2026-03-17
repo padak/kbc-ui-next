@@ -23,6 +23,7 @@ import { JobDetailPage } from '@/pages/jobs/JobDetailPage';
 import { FlowsPage } from '@/pages/flows/FlowsPage';
 import { TransformationsPage } from '@/pages/transformations/TransformationsPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
+import { SetupPage } from '@/pages/SetupPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,6 +41,7 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<ConnectPage />} />
+          <Route path="/setup" element={<SetupPage />} />
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/storage" element={<BucketsPage />} />

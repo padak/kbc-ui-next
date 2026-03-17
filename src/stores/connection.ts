@@ -13,6 +13,8 @@ export type ProjectEntry = {
   token: string;
   projectId: number;
   projectName: string;
+  organizationId: string;
+  organizationName: string;
   tokenDescription: string;
 };
 
@@ -60,6 +62,8 @@ function hydrateProjects(): { projects: ProjectEntry[]; activeProjectId: string 
       token,
       projectId: 0,
       projectName: '',
+      organizationId: '',
+      organizationName: '',
       tokenDescription: '',
     };
     return { projects: [legacyProject], activeProjectId: 'legacy' };
@@ -135,6 +139,8 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
       token,
       projectId: 0,
       projectName,
+      organizationId: '',
+      organizationName: '',
       tokenDescription,
     };
     persistProjects([project], 'manual');
