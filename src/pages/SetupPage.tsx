@@ -474,15 +474,21 @@ function AddOrgForm({ existingOrgIds, onAdd, onCancel }: AddOrgFormProps) {
     setError(null);
     setIsAutoDiscovering(true);
     try {
-      const info = await manageApi.getManageTokenInfo(stack, manageToken);
-      if (info.organizations.length > 0) {
-        const org = info.organizations[0]!;
-        setOrgId(String(org.id));
-        setOrgName(org.name);
+      const orgs = await manageApi.listOrganizations(stack, manageToken);
+      if (orgs.length === 1) {
+        // Single org - auto-fill
+        setOrgId(String(orgs[0]!.id));
+        setOrgName(orgs[0]!.name);
+      } else if (orgs.length > 1) {
+        // Multiple orgs - let user pick (fill first, show info)
+        setOrgId(String(orgs[0]!.id));
+        setOrgName(orgs[0]!.name);
+        setError(`Found ${orgs.length} organizations: ${orgs.map(o => `${o.name} (${o.id})`).join(', ')}. First one selected - change Organization ID if needed.`);
+      } else {
+        setError('No organizations found for this token.');
       }
     } catch (err) {
-      // Not critical - user can enter org ID manually
-      setError(err instanceof Error ? err.message : 'Auto-discover failed');
+      setError(err instanceof Error ? err.message : 'Auto-discover failed. Enter Organization ID manually.');
     } finally {
       setIsAutoDiscovering(false);
     }

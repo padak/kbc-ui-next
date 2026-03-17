@@ -68,17 +68,19 @@ export const manageApi = {
     return response.json();
   },
 
-  async getManageTokenInfo(
+  // GET /manage/organizations - returns all organizations the token has access to
+  async listOrganizations(
     stackUrl: string,
     manageToken: string,
-  ): Promise<{ organizations: Array<{ id: number; name: string }> }> {
-    const url = `${stackUrl}/manage/token-info`;
+  ): Promise<Array<{ id: number; name: string }>> {
+    const url = `${stackUrl}/manage/organizations`;
     const response = await fetch(url, {
       headers: { [MANAGE_TOKEN_HEADER]: manageToken },
     });
     if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
       throw new Error(
-        'Could not get token info. Please enter the Organization ID manually.',
+        (body as Record<string, string>).message ?? `Failed to list organizations: ${response.status}`,
       );
     }
     return response.json();
