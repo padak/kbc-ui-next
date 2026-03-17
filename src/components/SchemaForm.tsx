@@ -124,7 +124,7 @@ function FormField({
             </option>
           ))}
         </select>
-        {description && <p className="mt-1 text-xs text-gray-500">{description}</p>}
+        {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: description }} />}
       </div>
     );
   }
@@ -150,7 +150,7 @@ function FormField({
           rows={3}
           className="block w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
-        {description && <p className="mt-1 text-xs text-gray-500">{description}</p>}
+        {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: description }} />}
       </div>
     );
   }
@@ -180,7 +180,7 @@ function FormField({
         placeholder={placeholder}
         className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
       />
-      {description && <p className="mt-1 text-xs text-gray-500">{description}</p>}
+      {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: description }} />}
     </div>
   );
 }
