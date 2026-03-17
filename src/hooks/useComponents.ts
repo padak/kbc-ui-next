@@ -10,10 +10,10 @@ import { useConnectionStore } from '@/stores/connection';
 import type { Component } from '@/api/schemas';
 
 export function useComponents() {
-  const isConnected = useConnectionStore((s) => s.isConnected);
+  const { isConnected, activeProjectId } = useConnectionStore();
 
   return useQuery({
-    queryKey: ['components'],
+    queryKey: [activeProjectId, 'components'],
     queryFn: () => componentsApi.listComponents(),
     enabled: isConnected,
   });
@@ -29,30 +29,30 @@ export function useComponentsByType(type: Component['type']) {
 }
 
 export function useComponent(componentId: string) {
-  const isConnected = useConnectionStore((s) => s.isConnected);
+  const { isConnected, activeProjectId } = useConnectionStore();
 
   return useQuery({
-    queryKey: ['components', componentId],
+    queryKey: [activeProjectId, 'components', componentId],
     queryFn: () => componentsApi.getComponent(componentId),
     enabled: isConnected && !!componentId,
   });
 }
 
 export function useConfigurations(componentId: string) {
-  const isConnected = useConnectionStore((s) => s.isConnected);
+  const { isConnected, activeProjectId } = useConnectionStore();
 
   return useQuery({
-    queryKey: ['components', componentId, 'configs'],
+    queryKey: [activeProjectId, 'components', componentId, 'configs'],
     queryFn: () => componentsApi.listConfigurations(componentId),
     enabled: isConnected && !!componentId,
   });
 }
 
 export function useConfiguration(componentId: string, configId: string) {
-  const isConnected = useConnectionStore((s) => s.isConnected);
+  const { isConnected, activeProjectId } = useConnectionStore();
 
   return useQuery({
-    queryKey: ['components', componentId, 'configs', configId],
+    queryKey: [activeProjectId, 'components', componentId, 'configs', configId],
     queryFn: () => componentsApi.getConfiguration(componentId, configId),
     enabled: isConnected && !!componentId && !!configId,
   });
@@ -60,11 +60,12 @@ export function useConfiguration(componentId: string, configId: string) {
 
 export function useDeleteConfiguration(componentId: string) {
   const queryClient = useQueryClient();
+  const activeProjectId = useConnectionStore((s) => s.activeProjectId);
 
   return useMutation({
     mutationFn: (configId: string) => componentsApi.deleteConfiguration(componentId, configId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['components', componentId, 'configs'] });
+      queryClient.invalidateQueries({ queryKey: [activeProjectId, 'components', componentId, 'configs'] });
     },
   });
 }

@@ -1,28 +1,61 @@
 // file: pages/ConnectPage.tsx
-// Login/connect page: user enters stack URL + Storage API token.
-// Verifies token against the Keboola API before connecting.
+// Login/connect page: auto-loads projects from env or shows manual connect form.
+// Verifies tokens against the Keboola API before connecting.
 // Used by: App.tsx as the default route for unauthenticated users.
-// Pre-fills from VITE_STACK_URL and VITE_STORAGE_TOKEN env vars.
+// Multi-project: loads from VITE_PROJECTS, falls back to manual form.
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { useConnect } from '@/hooks/useAuth';
 import { useConnectionStore } from '@/stores/connection';
+import { loadProjects } from '@/lib/projectLoader';
 import { ROUTES } from '@/lib/constants';
 
 export function ConnectPage() {
   const navigate = useNavigate();
-  const isConnected = useConnectionStore((s) => s.isConnected);
+  const { isConnected, setProjects, setLoading, isLoading } = useConnectionStore();
   const { connect, isPending, error } = useConnect();
+  const autoLoadAttempted = useRef(false);
 
   const [stackUrl, setStackUrl] = useState(import.meta.env.VITE_STACK_URL ?? '');
   const [token, setToken] = useState(import.meta.env.VITE_STORAGE_TOKEN ?? '');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
+  // Redirect if already connected
   useEffect(() => {
     if (isConnected) {
       navigate(ROUTES.DASHBOARD, { replace: true });
     }
   }, [isConnected, navigate]);
+
+  // Auto-load projects from env on mount
+  useEffect(() => {
+    if (autoLoadAttempted.current || isConnected) return;
+    autoLoadAttempted.current = true;
+
+    const hasEnvProjects = !!import.meta.env.VITE_PROJECTS;
+    const hasSingleProject = !!import.meta.env.VITE_STACK_URL && !!import.meta.env.VITE_STORAGE_TOKEN;
+
+    if (!hasEnvProjects && !hasSingleProject) return;
+
+    setLoading(true);
+    loadProjects()
+      .then((projects) => {
+        if (projects.length > 0) {
+          setProjects(projects);
+          // isConnected will become true, triggering the redirect above
+        } else {
+          setLoadError('No valid projects found. Check your tokens.');
+        }
+      })
+      .catch((err) => {
+        console.error('[ConnectPage] Failed to load projects:', err);
+        setLoadError('Failed to load projects from environment configuration.');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [isConnected, setProjects, setLoading]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,6 +69,18 @@ export function ConnectPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <div className="text-center">
+          <div className="mb-4 text-4xl text-gray-300">&#8987;</div>
+          <h1 className="text-xl font-semibold text-gray-700">Loading projects...</h1>
+          <p className="mt-2 text-sm text-gray-400">Verifying API tokens</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md">
@@ -43,6 +88,12 @@ export function ConnectPage() {
           <h1 className="text-3xl font-bold text-gray-900">Keboola</h1>
           <p className="mt-2 text-sm text-gray-500">Connect to your Keboola stack</p>
         </div>
+
+        {loadError && (
+          <div className="mb-4 rounded-md bg-amber-50 p-3 text-sm text-amber-700">
+            {loadError}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4">

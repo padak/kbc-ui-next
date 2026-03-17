@@ -12,6 +12,8 @@ export const HTTP_HEADERS = {
 export const STORAGE_KEY = {
   STACK_URL: 'kbc_stack_url',
   TOKEN: 'kbc_storage_token',
+  PROJECTS: 'kbc_projects',
+  ACTIVE_PROJECT_ID: 'kbc_active_project_id',
 } as const;
 
 export const ROUTES = {

@@ -83,11 +83,23 @@ Replace raw JSON with auto-generated forms from component's configurationSchema.
 ### Phase 4: Multi-project
 The killer differentiator. Connect multiple projects, search across them.
 
-- [ ] **Project registry** - store multiple stack+token pairs
-- [ ] **Project switcher** - dropdown or sidebar with all connected projects
-- [ ] **Cross-project search** - find configs/tables across all projects
-- [ ] **Cross-project comparison** - diff configs between projects
-- [ ] **Dependency map** - which project shares data with which
+**Setup flow:**
+1. User provides Management API token + stack URL
+2. UI calls `/manage/organizations/{orgId}/projects` to list projects
+3. User selects which projects to register
+4. For each: `POST /manage/projects/{projectId}/tokens` creates Storage token
+5. Save to `projects.secret.json` (gitignored)
+6. Management token discarded (never stored)
+
+Reference: `~/github/keboola_agent_cli/` org command (ManageClient, OrgService)
+
+- [ ] **projects.secret.json** - multi-project config file with stack+token per project
+- [ ] **Management API setup page** - org discovery, project selection, token creation
+- [ ] **Multi-project connection store** - Zustand with N projects, active project context
+- [ ] **Project switcher sidebar** - org tree with projects, click to switch
+- [ ] **Metadata preload** - load buckets/components/configs from all projects into cache
+- [ ] **Global search (Cmd+K)** - search across all cached project metadata
+- [ ] **Data catalog awareness** - shared buckets show source project, cross-project navigation
 - [ ] **Multi-project jobs view** - all jobs across all projects in one table
 
 ### Phase 5: Flow builder & transformation editor

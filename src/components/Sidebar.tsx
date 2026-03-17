@@ -1,12 +1,13 @@
 // file: components/Sidebar.tsx
-// Collapsible navigation sidebar with route links and connection info.
-// Collapsed: shows only icons (48px). Expanded: icons + labels (208px).
+// Collapsible navigation sidebar with project switcher, route links, and connection info.
+// When multiple projects are loaded, shows a scrollable project list grouped by stack.
 // Used by: components/AppLayout.tsx (always visible when connected).
 // Toggle via hamburger button or AppLayout state.
 
 import { NavLink } from 'react-router';
 import { NAV_ITEMS } from '@/lib/constants';
 import { useConnectionStore } from '@/stores/connection';
+import type { ProjectEntry } from '@/stores/connection';
 
 const ICONS: Record<string, string> = {
   home: '\u2302',
@@ -23,8 +24,40 @@ type SidebarProps = {
   onToggle: () => void;
 };
 
+function groupByStack(projects: ProjectEntry[]): Record<string, ProjectEntry[]> {
+  const groups: Record<string, ProjectEntry[]> = {};
+  for (const project of projects) {
+    // Extract a short stack label from URL: "connection.north-europe.azure.keboola.com" -> "north-europe.azure"
+    const stackLabel = extractStackLabel(project.stackUrl);
+    if (!groups[stackLabel]) {
+      groups[stackLabel] = [];
+    }
+    groups[stackLabel].push(project);
+  }
+  return groups;
+}
+
+function extractStackLabel(stackUrl: string): string {
+  try {
+    const hostname = new URL(stackUrl).hostname;
+    // connection.north-europe.azure.keboola.com -> north-europe.azure
+    // connection.keboola.com -> keboola.com
+    const parts = hostname.split('.');
+    if (parts.length > 2 && parts[0] === 'connection') {
+      return parts.slice(1, -2).join('.') || parts.slice(1).join('.');
+    }
+    return hostname;
+  } catch {
+    return stackUrl;
+  }
+}
+
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
-  const { projectName, tokenDescription, disconnect } = useConnectionStore();
+  const { projects, activeProjectId, projectName, tokenDescription, disconnect, setActiveProject } =
+    useConnectionStore();
+
+  const hasMultipleProjects = projects.length > 1;
+  const groupedProjects = hasMultipleProjects ? groupByStack(projects) : {};
 
   return (
     <aside
@@ -43,7 +76,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {!collapsed && (
           <div className="ml-2 min-w-0">
             <h1 className="text-sm font-bold text-gray-900">Keboola</h1>
-            {projectName && (
+            {!hasMultipleProjects && projectName && (
               <p className="truncate text-[10px] text-gray-400" title={projectName}>
                 {projectName}
               </p>
@@ -51,6 +84,56 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
         )}
       </div>
+
+      {/* Project switcher for multi-project mode */}
+      {hasMultipleProjects && (
+        <div className="border-b border-gray-200 max-h-48 overflow-y-auto px-2 py-2">
+          {collapsed ? (
+            // Collapsed: show abbreviated project IDs
+            <div className="flex flex-col gap-0.5">
+              {projects.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setActiveProject(p.id)}
+                  title={p.projectName}
+                  className={`w-full rounded px-1 py-1 text-[10px] font-mono ${
+                    p.id === activeProjectId
+                      ? 'bg-blue-50 text-blue-700 font-medium'
+                      : 'text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {p.id.slice(0, 4)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            // Expanded: show projects grouped by stack
+            Object.entries(groupedProjects).map(([stackLabel, stackProjects]) => (
+              <div key={stackLabel} className="mb-1">
+                {Object.keys(groupedProjects).length > 1 && (
+                  <p className="px-2 py-1 text-[10px] font-semibold uppercase text-gray-400 tracking-wider">
+                    {stackLabel}
+                  </p>
+                )}
+                {stackProjects.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setActiveProject(p.id)}
+                    title={`${p.projectName} (ID: ${p.id})`}
+                    className={`w-full text-left px-2 py-1 text-xs rounded truncate ${
+                      p.id === activeProjectId
+                        ? 'bg-blue-50 text-blue-700 font-medium'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {p.projectName}
+                  </button>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       <nav className="flex-1 overflow-y-auto px-1.5 py-2">
         {NAV_ITEMS.map((item) => (

@@ -4,3 +4,4 @@ dist/
 *.tsbuildinfo
 .vite/
 .env
+projects.secret.json

@@ -19,10 +19,10 @@ export type FlowItem = {
 };
 
 export function useFlows() {
-  const isConnected = useConnectionStore((s) => s.isConnected);
+  const { isConnected, activeProjectId } = useConnectionStore();
 
   return useQuery({
-    queryKey: ['flows', 'aggregated'],
+    queryKey: [activeProjectId, 'flows', 'aggregated'],
     queryFn: async () => {
       // Fetch all data sources in parallel
       const [orchestratorConfigs, flowConfigs, schedules, recentJobs] = await Promise.all([

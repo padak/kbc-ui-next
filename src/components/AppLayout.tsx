@@ -2,7 +2,7 @@
 // Root layout: collapsible sidebar + main content area with Outlet.
 // Guards routes - redirects to ConnectPage if not connected.
 // Used by: App.tsx as the parent route for all authenticated pages.
-// Sidebar collapses to icons on small screens, expands on hover/click.
+// Handles loading state during project initialization.
 
 import { useState } from 'react';
 import { Outlet, Navigate } from 'react-router';
@@ -11,8 +11,19 @@ import { Sidebar } from './Sidebar';
 import { ErrorBoundary } from './ErrorBoundary';
 
 export function AppLayout() {
-  const isConnected = useConnectionStore((s) => s.isConnected);
+  const { isConnected, isLoading } = useConnectionStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="mb-4 text-4xl text-gray-300">&#8987;</div>
+          <p className="text-sm text-gray-500">Loading projects...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isConnected) {
     return <Navigate to="/" replace />;

@@ -18,10 +18,10 @@ export function useVerifyToken() {
 }
 
 export function useTokenInfo() {
-  const { stackUrl, token, isConnected } = useConnectionStore();
+  const { stackUrl, token, isConnected, activeProjectId } = useConnectionStore();
 
   return useQuery({
-    queryKey: ['token', 'verify'],
+    queryKey: [activeProjectId, 'token', 'verify'],
     queryFn: () => storageApi.verifyToken(stackUrl, token),
     enabled: isConnected,
     staleTime: 5 * 60 * 1000,

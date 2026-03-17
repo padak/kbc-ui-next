@@ -11,11 +11,11 @@ import { useConnectionStore } from '@/stores/connection';
 const RUNNING_STATUSES = new Set(['created', 'waiting', 'processing', 'terminating']);
 
 export function useJobs(params?: { limit?: number; status?: string; componentId?: string }) {
-  const isConnected = useConnectionStore((s) => s.isConnected);
+  const { isConnected, activeProjectId } = useConnectionStore();
   const limit = params?.limit ?? 50;
 
   return useQuery({
-    queryKey: ['jobs', { limit, status: params?.status, componentId: params?.componentId }],
+    queryKey: [activeProjectId, 'jobs', { limit, status: params?.status, componentId: params?.componentId }],
     queryFn: () => jobsApi.listJobs({ limit, status: params?.status, componentId: params?.componentId }),
     enabled: isConnected,
     refetchInterval: 10_000,
@@ -23,10 +23,10 @@ export function useJobs(params?: { limit?: number; status?: string; componentId?
 }
 
 export function useJob(jobId: string) {
-  const isConnected = useConnectionStore((s) => s.isConnected);
+  const { isConnected, activeProjectId } = useConnectionStore();
 
   return useQuery({
-    queryKey: ['jobs', jobId],
+    queryKey: [activeProjectId, 'jobs', jobId],
     queryFn: () => jobsApi.getJob(jobId),
     enabled: isConnected && !!jobId,
     refetchInterval: (query) => {

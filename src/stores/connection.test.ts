@@ -1,6 +1,6 @@
 // file: stores/connection.test.ts
-// Unit tests for Zustand connection store.
-// Tests connect, disconnect, and localStorage persistence.
+// Unit tests for Zustand multi-project connection store.
+// Tests connect, disconnect, multi-project operations, and localStorage persistence.
 // Run with: npm test
 // Clears localStorage between tests for isolation.
 // Uses dynamic import because the store reads localStorage at module scope,
@@ -30,8 +30,11 @@ const { useConnectionStore } = await import('./connection');
 describe('connection store', () => {
   beforeEach(() => {
     localStorage.clear();
-    // Reset store state
+    // Reset store state to clean defaults
     useConnectionStore.setState({
+      projects: [],
+      activeProjectId: null,
+      isLoading: false,
       stackUrl: '',
       token: '',
       projectName: '',
@@ -45,9 +48,11 @@ describe('connection store', () => {
     expect(state.isConnected).toBe(false);
     expect(state.stackUrl).toBe('');
     expect(state.token).toBe('');
+    expect(state.projects).toEqual([]);
+    expect(state.activeProjectId).toBeNull();
   });
 
-  it('connects and persists to localStorage', () => {
+  it('connects via legacy connect and persists to localStorage', () => {
     const { connect } = useConnectionStore.getState();
     connect('https://connection.keboola.com', 'test-token', 'Test Project', 'test@example.com');
 
@@ -56,6 +61,8 @@ describe('connection store', () => {
     expect(state.stackUrl).toBe('https://connection.keboola.com');
     expect(state.token).toBe('test-token');
     expect(state.projectName).toBe('Test Project');
+    expect(state.projects).toHaveLength(1);
+    expect(state.activeProjectId).toBe('manual');
     expect(localStorage.getItem('kbc_stack_url')).toBe('https://connection.keboola.com');
     expect(localStorage.getItem('kbc_storage_token')).toBe('test-token');
   });
@@ -68,6 +75,99 @@ describe('connection store', () => {
     const state = useConnectionStore.getState();
     expect(state.isConnected).toBe(false);
     expect(state.stackUrl).toBe('');
+    expect(state.projects).toEqual([]);
+    expect(state.activeProjectId).toBeNull();
     expect(localStorage.getItem('kbc_stack_url')).toBeNull();
+    expect(localStorage.getItem('kbc_projects')).toBeNull();
+  });
+
+  it('sets multiple projects and activates the first one', () => {
+    const projects = [
+      {
+        id: '100',
+        stackUrl: 'https://connection.keboola.com',
+        token: 'token-a',
+        projectId: 100,
+        projectName: 'Project A',
+        tokenDescription: 'Token A',
+      },
+      {
+        id: '200',
+        stackUrl: 'https://connection.north-europe.azure.keboola.com',
+        token: 'token-b',
+        projectId: 200,
+        projectName: 'Project B',
+        tokenDescription: 'Token B',
+      },
+    ];
+
+    useConnectionStore.getState().setProjects(projects);
+
+    const state = useConnectionStore.getState();
+    expect(state.projects).toHaveLength(2);
+    expect(state.activeProjectId).toBe('100');
+    expect(state.stackUrl).toBe('https://connection.keboola.com');
+    expect(state.token).toBe('token-a');
+    expect(state.projectName).toBe('Project A');
+    expect(state.isConnected).toBe(true);
+  });
+
+  it('switches active project', () => {
+    const projects = [
+      {
+        id: '100',
+        stackUrl: 'https://connection.keboola.com',
+        token: 'token-a',
+        projectId: 100,
+        projectName: 'Project A',
+        tokenDescription: 'Token A',
+      },
+      {
+        id: '200',
+        stackUrl: 'https://connection.north-europe.azure.keboola.com',
+        token: 'token-b',
+        projectId: 200,
+        projectName: 'Project B',
+        tokenDescription: 'Token B',
+      },
+    ];
+
+    useConnectionStore.getState().setProjects(projects);
+    useConnectionStore.getState().setActiveProject('200');
+
+    const state = useConnectionStore.getState();
+    expect(state.activeProjectId).toBe('200');
+    expect(state.stackUrl).toBe('https://connection.north-europe.azure.keboola.com');
+    expect(state.token).toBe('token-b');
+    expect(state.projectName).toBe('Project B');
+    expect(state.isConnected).toBe(true);
+  });
+
+  it('API client compatibility - getState returns stackUrl and token from active project', () => {
+    const projects = [
+      {
+        id: '100',
+        stackUrl: 'https://connection.keboola.com',
+        token: 'token-a',
+        projectId: 100,
+        projectName: 'Project A',
+        tokenDescription: 'Token A',
+      },
+    ];
+
+    useConnectionStore.getState().setProjects(projects);
+
+    // This is what api/client.ts does
+    const { stackUrl, token } = useConnectionStore.getState();
+    expect(stackUrl).toBe('https://connection.keboola.com');
+    expect(token).toBe('token-a');
+  });
+
+  it('handles setLoading correctly', () => {
+    useConnectionStore.getState().setLoading(true);
+    expect(useConnectionStore.getState().isLoading).toBe(true);
+
+    useConnectionStore.getState().setLoading(false);
+    expect(useConnectionStore.getState().isLoading).toBe(false);
   });
 });
