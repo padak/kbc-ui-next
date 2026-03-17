@@ -74,15 +74,24 @@ type RawTask = {
 
 const elk = new ELK();
 
-const PHASE_NODE_MIN_WIDTH = 300;
+const TASK_COLS = 3; // tasks per row in grid
+const TASK_WIDTH = 200;
+const TASK_HEIGHT = 48;
+const TASK_GAP = 8;
 const PHASE_NODE_HEADER_HEIGHT = 36;
-const PHASE_NODE_TASK_HEIGHT = 36;
 const PHASE_NODE_PADDING = 16;
 const PHASE_NODE_EMPTY_HEIGHT = 40;
 
+function estimateNodeWidth(taskCount: number): number {
+  const cols = Math.min(taskCount, TASK_COLS);
+  if (cols === 0) return TASK_WIDTH + PHASE_NODE_PADDING * 2;
+  return cols * TASK_WIDTH + (cols - 1) * TASK_GAP + PHASE_NODE_PADDING * 2;
+}
+
 function estimateNodeHeight(taskCount: number): number {
   if (taskCount === 0) return PHASE_NODE_HEADER_HEIGHT + PHASE_NODE_EMPTY_HEIGHT + PHASE_NODE_PADDING;
-  return PHASE_NODE_HEADER_HEIGHT + taskCount * PHASE_NODE_TASK_HEIGHT + PHASE_NODE_PADDING;
+  const rows = Math.ceil(taskCount / TASK_COLS);
+  return PHASE_NODE_HEADER_HEIGHT + rows * TASK_HEIGHT + (rows - 1) * TASK_GAP + PHASE_NODE_PADDING;
 }
 
 async function getLayoutedElements(
@@ -99,7 +108,7 @@ async function getLayoutedElements(
     },
     children: nodes.map((n) => ({
       id: n.id,
-      width: PHASE_NODE_MIN_WIDTH,
+      width: estimateNodeWidth(n.data.tasks?.length ?? 0),
       height: estimateNodeHeight(n.data.tasks?.length ?? 0),
     })),
     edges: edges.map((e) => ({
@@ -124,27 +133,29 @@ async function getLayoutedElements(
 
 function PhaseNode({ data }: NodeProps<Node<PhaseNodeData>>) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white shadow-sm min-w-[280px]">
+    <div className="rounded-lg border border-gray-200 bg-white shadow-md">
       <Handle type="target" position={Position.Top} className="!bg-gray-300 !w-2 !h-2" />
-      <div className="border-b border-gray-100 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-700">
+      <div className="rounded-t-lg bg-gray-800 px-3 py-1.5 text-center text-[10px] font-semibold text-white">
         {data.name}
       </div>
-      <div className="p-2 space-y-1">
-        {data.tasks.map((task) => (
-          <div
-            key={task.id}
-            className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs ${
-              task.enabled ? 'bg-white' : 'bg-gray-50 opacity-50'
-            }`}
-          >
-            {task.icon && <img src={task.icon} className="h-5 w-5 rounded" alt="" />}
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-gray-800">{task.configName}</p>
-              <p className="truncate text-gray-400">{task.componentName}</p>
+      <div className="p-2">
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(data.tasks.length, TASK_COLS)}, ${TASK_WIDTH}px)` }}>
+          {data.tasks.map((task) => (
+            <div
+              key={task.id}
+              className={`flex items-center gap-2 rounded-md border border-gray-100 bg-white px-2.5 py-2 shadow-sm ${
+                task.enabled ? '' : 'opacity-40'
+              }`}
+              style={{ width: TASK_WIDTH }}
+            >
+              {task.icon && <img src={task.icon} className="h-5 w-5 shrink-0 rounded" alt="" />}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[11px] font-medium text-gray-900">{task.configName}</p>
+                <p className="truncate text-[9px] text-gray-400">{task.componentName}</p>
+              </div>
             </div>
-            {!task.enabled && <span className="text-[9px] text-gray-400">OFF</span>}
-          </div>
-        ))}
+          ))}
+        </div>
         {data.tasks.length === 0 && (
           <p className="py-2 text-center text-[10px] text-gray-400">No tasks</p>
         )}
