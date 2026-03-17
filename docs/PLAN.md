@@ -115,9 +115,19 @@ The two complex UIs that need custom implementation.
 - [x] **Python editor** - same CodeEditor, auto-detects language from componentId
 - [x] **extractCode helper** - finds SQL/Python from queries array or blocks structure
 - [x] **26 tests** - FlowBuilder (10) + CodeEditor (16)
-- [ ] **Flow editing** - add/remove phases and tasks via UI
+- [x] **Flow editing** - add/remove phases and tasks via FlowEditor
+- [x] **I/O Mapping editor** - input/output table mapping for transformations
+- [x] **flowToMermaid** - export flow as Mermaid/text for AI context
 - [ ] **CodeMirror/Monaco** - syntax highlighting upgrade for SQL/Python
 - [ ] **Query results viewer** - tabular results display
+
+### Future: AI-driven flow orchestration
+Instead of drag-and-drop, use prompt-driven flow editing:
+- AI gets flow as Mermaid/text + available components/configs
+- User describes changes in natural language
+- AI generates new flow JSON, UI renders preview
+- User confirms -> save
+- See `flowToMermaid()` and `flowToText()` in `src/lib/flowToMermaid.ts`
 
 ### Phase 6: Remaining features
 Everything else from the legacy UI.
