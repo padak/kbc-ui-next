@@ -1,6 +1,7 @@
 // file: pages/flows/FlowsPage.tsx
 // Rich flows listing: name, schedule, last change, last run status.
 // Aggregates data from orchestrator configs, scheduler, and jobs APIs.
+// Groups flows by folder metadata when available.
 // Used by: App.tsx route /flows.
 // Data from: hooks/useFlows.ts (useFlows).
 
@@ -56,11 +57,47 @@ function matchesFilter(item: FlowItem, filter: string): boolean {
   }
 }
 
+type FolderGroup = { folder: string; items: FlowItem[] };
+
+function groupByFolder(flows: FlowItem[]): FolderGroup[] {
+  const groups = new Map<string, FlowItem[]>();
+  for (const flow of flows) {
+    const key = flow.folder ?? '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(flow);
+  }
+
+  // Named folders first (sorted alphabetically), then unfiled
+  const result: FolderGroup[] = [];
+  const sortedKeys = [...groups.keys()].filter(k => k !== '').sort();
+  for (const key of sortedKeys) {
+    result.push({ folder: key, items: groups.get(key)! });
+  }
+  const unfiled = groups.get('');
+  if (unfiled) {
+    result.push({ folder: '', items: unfiled });
+  }
+  return result;
+}
+
 export function FlowsPage() {
   const navigate = useNavigate();
   const { data: flows, isLoading, error } = useFlows();
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+
+  const toggleFolder = (folder: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folder)) {
+        next.delete(folder);
+      } else {
+        next.add(folder);
+      }
+      return next;
+    });
+  };
 
   const filtered = flows?.filter((f) => {
     if (!matchesFilter(f, filter)) return false;
@@ -70,6 +107,80 @@ export function FlowsPage() {
     }
     return true;
   });
+
+  const grouped = groupByFolder(filtered ?? []);
+  const hasFolders = grouped.some(g => g.folder !== '');
+
+  function renderFlowTable(items: FlowItem[]) {
+    return (
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Schedule</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Last Change</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Last Run</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {items.map((item) => (
+              <tr
+                key={`${item.componentId}:${item.config.id}`}
+                onClick={() => navigate(`/components/${encodeURIComponent(item.componentId)}/${item.config.id}`)}
+                className="cursor-pointer hover:bg-gray-50"
+              >
+                <td className="px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{item.config.name}</p>
+                    {item.config.description && (
+                      <p className="mt-0.5 max-w-xs truncate text-xs text-gray-400">{item.config.description}</p>
+                    )}
+                    {item.config.isDisabled && (
+                      <span className="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">Disabled</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">
+                  {item.schedule ? (
+                    <span className={item.schedule.schedule.state === 'enabled' ? 'text-gray-700' : 'text-gray-400'}>
+                      {formatCron(item.schedule.schedule.cronTab, item.schedule.schedule.state)}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">No Schedule</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <p className="text-sm text-gray-600">{formatDate(item.config.currentVersion.created)}</p>
+                  <p className="text-xs text-gray-400">{item.config.currentVersion.creatorToken.description}</p>
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">
+                  {item.lastJob ? (
+                    <div>
+                      <p>{formatRelativeTime(item.lastJob.createdTime)}</p>
+                      {item.lastJob.durationSeconds != null && item.lastJob.durationSeconds > 0 && (
+                        <p className="text-xs text-gray-400">{item.lastJob.durationSeconds}s</p>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">No run yet</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {item.lastJob ? (
+                    <StatusBadge status={item.lastJob.status} />
+                  ) : (
+                    <span className="text-xs text-gray-400">-</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -108,7 +219,7 @@ export function FlowsPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12 text-gray-400">Loading flows...</div>
-      ) : (
+      ) : !filtered?.length ? (
         <div className="overflow-x-auto rounded-lg border border-gray-200">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -120,68 +231,41 @@ export function FlowsPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {!filtered?.length ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
-                    No flows found
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((item) => (
-                  <tr
-                    key={`${item.componentId}:${item.config.id}`}
-                    onClick={() => navigate(`/components/${encodeURIComponent(item.componentId)}/${item.config.id}`)}
-                    className="cursor-pointer hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{item.config.name}</p>
-                        {item.config.description && (
-                          <p className="mt-0.5 max-w-xs truncate text-xs text-gray-400">{item.config.description}</p>
-                        )}
-                        {item.config.isDisabled && (
-                          <span className="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">Disabled</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {item.schedule ? (
-                        <span className={item.schedule.schedule.state === 'enabled' ? 'text-gray-700' : 'text-gray-400'}>
-                          {formatCron(item.schedule.schedule.cronTab, item.schedule.schedule.state)}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">No Schedule</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-sm text-gray-600">{formatDate(item.config.currentVersion.created)}</p>
-                      <p className="text-xs text-gray-400">{item.config.currentVersion.creatorToken.description}</p>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {item.lastJob ? (
-                        <div>
-                          <p>{formatRelativeTime(item.lastJob.createdTime)}</p>
-                          {item.lastJob.durationSeconds != null && item.lastJob.durationSeconds > 0 && (
-                            <p className="text-xs text-gray-400">{item.lastJob.durationSeconds}s</p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">No run yet</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {item.lastJob ? (
-                        <StatusBadge status={item.lastJob.status} />
-                      ) : (
-                        <span className="text-xs text-gray-400">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
+            <tbody>
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
+                  No flows found
+                </td>
+              </tr>
             </tbody>
           </table>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {grouped.map((group) => (
+            <div key={group.folder || '__unfiled'}>
+              {group.folder ? (
+                <button
+                  onClick={() => toggleFolder(group.folder)}
+                  className="mb-1 flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-left hover:bg-gray-50"
+                >
+                  <span className="text-xs text-gray-400">
+                    {expandedFolders.has(group.folder) ? '\u25BC' : '\u25B6'}
+                  </span>
+                  <span className="text-sm font-medium text-gray-800">{group.folder}</span>
+                  <span className="text-xs text-gray-400">({group.items.length})</span>
+                </button>
+              ) : (
+                hasFolders && (
+                  <p className="mb-2 mt-2 rounded bg-gray-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                    Flows without folder
+                  </p>
+                )
+              )}
+
+              {(!group.folder || expandedFolders.has(group.folder)) && renderFlowTable(group.items)}
+            </div>
+          ))}
         </div>
       )}
     </div>

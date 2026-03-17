@@ -64,6 +64,20 @@ export const storageApi = {
     });
   },
 
+  listConfigFolders(componentId: string) {
+    return fetchApi(
+      `/branch/default/search/component-configurations?idComponent=${encodeURIComponent(componentId)}&metadataKeys%5B%5D=KBC.configuration.folderName&include=filteredMetadata`,
+      z.array(z.object({
+        idComponent: z.string(),
+        configurationId: z.string(),
+        metadata: z.array(z.object({
+          key: z.string(),
+          value: z.string(),
+        }).passthrough()),
+      }).passthrough()),
+    );
+  },
+
   listBucketsForProject(creds: ProjectCredentials) {
     return fetchApiForProject(creds, '/buckets', z.array(BucketSchema));
   },

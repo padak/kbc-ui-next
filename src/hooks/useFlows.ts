@@ -9,6 +9,7 @@ import { useConnectionStore } from '@/stores/connection';
 import { componentsApi } from '@/api/components';
 import { schedulerApi } from '@/api/scheduler';
 import { jobsApi } from '@/api/jobs';
+import { storageApi } from '@/api/storage';
 import type { Configuration, Schedule, Job } from '@/api/schemas';
 
 export type FlowItem = {
@@ -16,6 +17,7 @@ export type FlowItem = {
   componentId: string;
   schedule: Schedule | null;
   lastJob: Job | null;
+  folder: string | null;
 };
 
 export function useFlows() {
@@ -25,12 +27,23 @@ export function useFlows() {
     queryKey: [activeProjectId, 'flows', 'aggregated'],
     queryFn: async () => {
       // Fetch all data sources in parallel
-      const [orchestratorConfigs, flowConfigs, schedules, recentJobs] = await Promise.all([
+      const [orchestratorConfigs, flowConfigs, schedules, recentJobs, orchestratorFolders, flowFolders] = await Promise.all([
         componentsApi.listConfigurations('keboola.orchestrator').catch(() => [] as Configuration[]),
         componentsApi.listConfigurations('keboola.flow').catch(() => [] as Configuration[]),
         schedulerApi.listSchedules().catch(() => [] as Schedule[]),
         jobsApi.listJobs({ limit: 200 }).catch(() => [] as Job[]),
+        storageApi.listConfigFolders('keboola.orchestrator').catch(() => []),
+        storageApi.listConfigFolders('keboola.flow').catch(() => []),
       ]);
+
+      // Build folder lookup: configId -> folderName
+      const folderMap = new Map<string, string>();
+      for (const item of [...orchestratorFolders, ...flowFolders]) {
+        const folderMeta = item.metadata.find(m => m.key === 'KBC.configuration.folderName');
+        if (folderMeta) {
+          folderMap.set(item.configurationId, folderMeta.value);
+        }
+      }
 
       // Build schedule lookup: configId -> Schedule
       const scheduleMap = new Map<string, Schedule>();
@@ -56,6 +69,7 @@ export function useFlows() {
           componentId: 'keboola.orchestrator',
           schedule: scheduleMap.get(config.id) ?? null,
           lastJob: jobMap.get(`keboola.orchestrator:${config.id}`) ?? null,
+          folder: folderMap.get(config.id) ?? null,
         });
       }
 
@@ -65,6 +79,7 @@ export function useFlows() {
           componentId: 'keboola.flow',
           schedule: scheduleMap.get(config.id) ?? null,
           lastJob: jobMap.get(`keboola.flow:${config.id}`) ?? null,
+          folder: folderMap.get(config.id) ?? null,
         });
       }
 
