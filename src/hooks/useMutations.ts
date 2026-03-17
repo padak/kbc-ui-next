@@ -34,10 +34,21 @@ export function useCreateConfiguration(componentId: string) {
 export function useUpdateConfiguration(componentId: string, configId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name?: string; description?: string; isDisabled?: boolean; changeDescription?: string }) =>
+    mutationFn: (data: { name?: string; description?: string; configuration?: Record<string, unknown>; isDisabled?: boolean; changeDescription?: string }) =>
       componentsApi.updateConfiguration(componentId, configId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['components', componentId, 'configs'] });
+      queryClient.invalidateQueries({ queryKey: ['components', componentId, 'configs', configId] });
+    },
+  });
+}
+
+export function useUpdateConfigurationRow(componentId: string, configId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { rowId: string; configuration?: Record<string, unknown>; changeDescription?: string }) =>
+      componentsApi.updateConfigurationRow(componentId, configId, data.rowId, data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['components', componentId, 'configs', configId] });
     },
   });

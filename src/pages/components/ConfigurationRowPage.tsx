@@ -6,7 +6,9 @@
 
 import { useParams, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
-import { useConfiguration } from '@/hooks/useComponents';
+import { ConfigEditor } from '@/components/ConfigEditor';
+import { useConfiguration, useComponent } from '@/hooks/useComponents';
+import { useUpdateConfigurationRow } from '@/hooks/useMutations';
 
 export function ConfigurationRowPage() {
   const { componentId, configId, rowId } = useParams<{
@@ -16,6 +18,8 @@ export function ConfigurationRowPage() {
   }>();
   const navigate = useNavigate();
   const { data: config, isLoading, error } = useConfiguration(componentId ?? '', configId ?? '');
+  const { data: component } = useComponent(componentId ?? '');
+  const updateRow = useUpdateConfigurationRow(componentId ?? '', configId ?? '');
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12 text-gray-400">Loading...</div>;
@@ -63,11 +67,22 @@ export function ConfigurationRowPage() {
         </div>
       </div>
 
-      {/* Row Configuration JSON */}
+      {/* Row Configuration Editor */}
       <h2 className="mb-3 text-lg font-semibold text-gray-900">Row Configuration</h2>
-      <pre className="mb-6 overflow-x-auto rounded-lg border border-gray-200 bg-gray-900 p-4 text-sm text-green-400">
-        {JSON.stringify(row.configuration, null, 2)}
-      </pre>
+      <div className="mb-6">
+        <ConfigEditor
+          schema={component?.configurationRowSchema ?? null}
+          values={row.configuration as Record<string, unknown>}
+          onSave={async (newValues) => {
+            await updateRow.mutateAsync({
+              rowId: rowId ?? '',
+              configuration: newValues,
+              changeDescription: 'Updated via kbc-ui-next',
+            });
+          }}
+          isSaving={updateRow.isPending}
+        />
+      </div>
 
       {/* Row State */}
       {Object.keys(row.state).length > 0 && (

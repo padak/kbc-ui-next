@@ -9,8 +9,10 @@ import { useParams, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { RunButton } from '@/components/RunButton';
 import { ConfirmModal } from '@/components/ConfirmModal';
-import { useConfiguration } from '@/hooks/useComponents';
+import { ConfigEditor } from '@/components/ConfigEditor';
+import { useConfiguration, useComponent } from '@/hooks/useComponents';
 import { useDeleteConfiguration } from '@/hooks/useComponents';
+import { useUpdateConfiguration } from '@/hooks/useMutations';
 import { formatDate } from '@/lib/formatters';
 import type { ConfigurationRow } from '@/api/schemas';
 
@@ -43,7 +45,9 @@ export function ConfigurationDetailPage() {
   const { componentId, configId } = useParams<{ componentId: string; configId: string }>();
   const navigate = useNavigate();
   const { data: config, isLoading, error } = useConfiguration(componentId ?? '', configId ?? '');
+  const { data: component } = useComponent(componentId ?? '');
   const deleteConfig = useDeleteConfiguration(componentId ?? '');
+  const updateConfig = useUpdateConfiguration(componentId ?? '', configId ?? '');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   if (isLoading) {
@@ -170,11 +174,19 @@ export function ConfigurationDetailPage() {
         </div>
       )}
 
-      {/* Raw Configuration JSON */}
-      <h2 className="mb-3 text-lg font-semibold text-gray-900">Configuration JSON</h2>
-      <pre className="overflow-x-auto rounded-lg border border-gray-200 bg-gray-900 p-4 text-sm text-green-400">
-        {JSON.stringify(config.configuration, null, 2)}
-      </pre>
+      {/* Configuration Editor */}
+      <h2 className="mb-3 text-lg font-semibold text-gray-900">Configuration</h2>
+      <ConfigEditor
+        schema={component?.configurationSchema ?? null}
+        values={config.configuration as Record<string, unknown>}
+        onSave={async (newValues) => {
+          await updateConfig.mutateAsync({
+            configuration: newValues,
+            changeDescription: 'Updated via kbc-ui-next',
+          });
+        }}
+        isSaving={updateConfig.isPending}
+      />
 
       <ConfirmModal
         title="Delete Configuration"

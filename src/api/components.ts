@@ -6,7 +6,7 @@
 
 import { z } from 'zod';
 import { fetchApi } from './client';
-import { ComponentSchema, ConfigurationSchema } from './schemas';
+import { ComponentSchema, ConfigurationSchema, ConfigurationRowSchema } from './schemas';
 
 export const componentsApi = {
   listComponents() {
@@ -62,5 +62,16 @@ export const componentsApi = {
       `/components/${componentId}/configs/${configId}/rows`,
       z.array(z.record(z.string(), z.unknown())),
     );
+  },
+
+  updateConfigurationRow(componentId: string, configId: string, rowId: string, data: { configuration?: Record<string, unknown>; changeDescription?: string }) {
+    const body = new URLSearchParams();
+    if (data.configuration) body.set('configuration', JSON.stringify(data.configuration));
+    if (data.changeDescription) body.set('changeDescription', data.changeDescription);
+    return fetchApi(`/components/${componentId}/configs/${configId}/rows/${rowId}`, ConfigurationRowSchema, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
   },
 };
