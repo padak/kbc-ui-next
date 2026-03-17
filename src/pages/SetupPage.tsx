@@ -468,29 +468,69 @@ function AddOrgForm({ existingOrgIds, onAdd, onCancel }: AddOrgFormProps) {
   const [progress, setProgress] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
-  const [isAutoDiscovering, setIsAutoDiscovering] = useState(false);
+  const [isDiscoveringOrgs, setIsDiscoveringOrgs] = useState(false);
   const [discoveredOrgs, setDiscoveredOrgs] = useState<Array<{ id: number; name: string }>>([]);
+  const [orgSearch, setOrgSearch] = useState('');
 
-  async function handleAutoDiscover() {
+  async function handleDiscoverOrgs() {
     setError(null);
-    setIsAutoDiscovering(true);
+    setIsDiscoveringOrgs(true);
     setDiscoveredOrgs([]);
     try {
-      const orgs = await manageApi.listOrganizations(stack, manageToken);
-      if (orgs.length === 0) {
-        setError('No organizations found for this token.');
-      } else {
+      // Step 1: Get maintainers
+      const maintainers = await manageApi.listMaintainers(stack, manageToken);
+
+      if (maintainers.length === 0) {
+        // Fallback: try direct /manage/organizations
+        const orgs = await manageApi.listOrganizations(stack, manageToken);
         setDiscoveredOrgs(orgs);
-        // Auto-select first one
-        setOrgId(String(orgs[0]!.id));
-        setOrgName(orgs[0]!.name);
+        if (orgs.length === 1) {
+          setOrgId(String(orgs[0]!.id));
+          setOrgName(orgs[0]!.name);
+        }
+        return;
+      }
+
+      // Step 2: Get organizations for all maintainers
+      const allOrgs: Array<{ id: number; name: string }> = [];
+      const seenIds = new Set<number>();
+
+      for (const maintainer of maintainers) {
+        try {
+          const orgs = await manageApi.listMaintainerOrganizations(stack, manageToken, maintainer.id);
+          for (const org of orgs) {
+            if (!seenIds.has(org.id)) {
+              seenIds.add(org.id);
+              allOrgs.push(org);
+            }
+          }
+        } catch {
+          // Some maintainers might not have org access, continue
+        }
+      }
+
+      // Sort by name
+      allOrgs.sort((a, b) => a.name.localeCompare(b.name));
+      setDiscoveredOrgs(allOrgs);
+
+      // Auto-select if only one
+      if (allOrgs.length === 1) {
+        setOrgId(String(allOrgs[0]!.id));
+        setOrgName(allOrgs[0]!.name);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Auto-discover failed. Enter Organization ID manually.');
+      setError(err instanceof Error ? err.message : 'Failed to discover organizations.');
     } finally {
-      setIsAutoDiscovering(false);
+      setIsDiscoveringOrgs(false);
     }
   }
+
+  const filteredOrgs = orgSearch
+    ? discoveredOrgs.filter((o) =>
+        o.name.toLowerCase().includes(orgSearch.toLowerCase()) ||
+        String(o.id).includes(orgSearch)
+      )
+    : discoveredOrgs;
 
   async function handleDiscover() {
     setError(null);
@@ -592,53 +632,52 @@ function AddOrgForm({ existingOrgIds, onAdd, onCancel }: AddOrgFormProps) {
           </p>
         </div>
 
-        {stack && manageToken && (
+        {stack && manageToken && discoveredOrgs.length === 0 && (
+          <button
+            onClick={handleDiscoverOrgs}
+            disabled={isDiscoveringOrgs || !stack || !manageToken}
+            className="rounded-md bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 disabled:text-gray-400"
+          >
+            {isDiscoveringOrgs ? 'Discovering organizations...' : 'Discover Organizations'}
+          </button>
+        )}
+
+        {discoveredOrgs.length > 0 && (
           <div>
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Organization
-                </label>
-                {discoveredOrgs.length > 0 ? (
-                  <select
-                    value={orgId}
-                    onChange={(e) => {
-                      const selected = discoveredOrgs.find((o) => String(o.id) === e.target.value);
-                      setOrgId(e.target.value);
-                      setOrgName(selected?.name ?? '');
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Organization ({discoveredOrgs.length} found)
+            </label>
+            {discoveredOrgs.length > 5 && (
+              <input
+                type="text"
+                value={orgSearch}
+                onChange={(e) => setOrgSearch(e.target.value)}
+                placeholder="Search organizations..."
+                className="mb-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            )}
+            <div className="max-h-48 overflow-y-auto rounded-md border border-gray-200">
+              {filteredOrgs.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-gray-400">No matching organizations</p>
+              ) : (
+                filteredOrgs.map((o) => (
+                  <button
+                    key={o.id}
+                    onClick={() => {
+                      setOrgId(String(o.id));
+                      setOrgName(o.name);
                       setProjects([]);
                     }}
-                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className={`flex w-full items-center justify-between border-b border-gray-50 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                      String(o.id) === orgId ? 'bg-blue-50 font-medium text-blue-700' : 'text-gray-700'
+                    }`}
                   >
-                    {discoveredOrgs.map((o) => (
-                      <option key={o.id} value={String(o.id)}>
-                        {o.name} ({o.id})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={orgId}
-                    onChange={(e) => setOrgId(e.target.value)}
-                    placeholder="Enter Organization ID or use Discover"
-                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                )}
-              </div>
-              <button
-                onClick={handleAutoDiscover}
-                disabled={isAutoDiscovering || !stack || !manageToken}
-                className="shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 disabled:text-gray-400"
-              >
-                {isAutoDiscovering ? 'Loading...' : discoveredOrgs.length > 0 ? 'Refresh' : 'Discover Orgs'}
-              </button>
+                    <span>{o.name}</span>
+                    <span className="text-xs text-gray-400">{o.id}</span>
+                  </button>
+                ))
+              )}
             </div>
-            {discoveredOrgs.length > 0 && (
-              <p className="mt-1 text-[10px] text-gray-400">
-                Found {discoveredOrgs.length} organization{discoveredOrgs.length !== 1 ? 's' : ''}
-              </p>
-            )}
           </div>
         )}
 

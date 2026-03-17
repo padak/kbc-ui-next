@@ -1,10 +1,20 @@
 // file: api/manage.ts
 // Management API client for organization/project discovery.
-// Used only during setup - management token is never persisted.
+// Flow: maintainers -> organizations -> projects -> create tokens.
 // Used by: SetupPage.tsx for adding organizations.
-// Endpoints: /manage/organizations/{id}/projects, /manage/projects/{id}/tokens.
+// Management token is never persisted to disk.
 
 const MANAGE_TOKEN_HEADER = 'X-KBC-ManageApiToken';
+
+type Maintainer = {
+  id: number;
+  name: string;
+};
+
+type ManagedOrganization = {
+  id: number;
+  name: string;
+};
 
 type ManageProject = {
   id: number;
@@ -19,33 +29,45 @@ type CreatedToken = {
   description: string;
 };
 
-export type { ManageProject, CreatedToken };
+export type { Maintainer, ManagedOrganization, ManageProject, CreatedToken };
+
+async function manageGet<T>(stackUrl: string, manageToken: string, path: string): Promise<T> {
+  const url = `${stackUrl}/manage/${path}`;
+  const response = await fetch(url, {
+    headers: { [MANAGE_TOKEN_HEADER]: manageToken },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(
+      (body as Record<string, string>).message ?? `Management API error: ${response.status}`,
+    );
+  }
+  return response.json();
+}
 
 export const manageApi = {
-  async listOrganizationProjects(
-    stackUrl: string,
-    manageToken: string,
-    orgId: string,
-  ): Promise<ManageProject[]> {
-    const url = `${stackUrl}/manage/organizations/${orgId}/projects`;
-    const response = await fetch(url, {
-      headers: { [MANAGE_TOKEN_HEADER]: manageToken },
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(
-        (body as Record<string, string>).message ?? `Management API error: ${response.status}`,
-      );
-    }
-    return response.json();
+  // Step 1: List maintainers the token has access to
+  listMaintainers(stackUrl: string, manageToken: string) {
+    return manageGet<Maintainer[]>(stackUrl, manageToken, 'maintainers');
   },
 
-  async createProjectToken(
-    stackUrl: string,
-    manageToken: string,
-    projectId: number,
-    description: string,
-  ): Promise<CreatedToken> {
+  // Step 2: List organizations under a maintainer
+  listMaintainerOrganizations(stackUrl: string, manageToken: string, maintainerId: number) {
+    return manageGet<ManagedOrganization[]>(stackUrl, manageToken, `maintainers/${maintainerId}/organizations`);
+  },
+
+  // Alternative: List orgs the token has direct access to (fewer results)
+  listOrganizations(stackUrl: string, manageToken: string) {
+    return manageGet<ManagedOrganization[]>(stackUrl, manageToken, 'organizations');
+  },
+
+  // Step 3: List projects in an organization
+  listOrganizationProjects(stackUrl: string, manageToken: string, orgId: string) {
+    return manageGet<ManageProject[]>(stackUrl, manageToken, `organizations/${orgId}/projects`);
+  },
+
+  // Step 4: Create a Storage API token in a project
+  async createProjectToken(stackUrl: string, manageToken: string, projectId: number, description: string): Promise<CreatedToken> {
     const url = `${stackUrl}/manage/projects/${projectId}/tokens`;
     const response = await fetch(url, {
       method: 'POST',
@@ -63,24 +85,6 @@ export const manageApi = {
       const body = await response.json().catch(() => ({}));
       throw new Error(
         (body as Record<string, string>).message ?? `Failed to create token: ${response.status}`,
-      );
-    }
-    return response.json();
-  },
-
-  // GET /manage/organizations - returns all organizations the token has access to
-  async listOrganizations(
-    stackUrl: string,
-    manageToken: string,
-  ): Promise<Array<{ id: number; name: string }>> {
-    const url = `${stackUrl}/manage/organizations`;
-    const response = await fetch(url, {
-      headers: { [MANAGE_TOKEN_HEADER]: manageToken },
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(
-        (body as Record<string, string>).message ?? `Failed to list organizations: ${response.status}`,
       );
     }
     return response.json();
