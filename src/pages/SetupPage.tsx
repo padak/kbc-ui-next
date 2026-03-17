@@ -5,8 +5,10 @@
 // Saves configuration to projects.secret.json via Vite middleware.
 
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
+import { useConnectionStore } from '@/stores/connection';
+import type { ProjectEntry } from '@/stores/connection';
 import {
   loadProjectConfig,
   saveProjectConfig,
@@ -16,6 +18,8 @@ import {
 import { manageApi, type ManageProject } from '@/api/manage';
 
 export function SetupPage() {
+  const navigate = useNavigate();
+  const { setProjects } = useConnectionStore();
   const [config, setConfig] = useState<ProjectConfig>({ organizations: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [showAddOrg, setShowAddOrg] = useState(false);
@@ -29,13 +33,36 @@ export function SetupPage() {
     });
   }, []);
 
-  async function handleSave(updatedConfig: ProjectConfig) {
+  async function handleSave(updatedConfig: ProjectConfig, autoConnect = false) {
     setSaveError(null);
     setSaveSuccess(false);
     try {
       await saveProjectConfig(updatedConfig);
       setConfig(updatedConfig);
       setSaveSuccess(true);
+
+      if (autoConnect && updatedConfig.organizations.length > 0) {
+        // Load projects into connection store and go to dashboard
+        const entries: ProjectEntry[] = updatedConfig.organizations.flatMap((org) =>
+          org.projects.map((p) => ({
+            id: String(p.id),
+            stackUrl: org.stack.replace(/\/+$/, ''),
+            token: p.token,
+            projectId: Number(p.id),
+            projectName: p.name,
+            organizationId: org.id,
+            organizationName: org.name,
+            tokenDescription: '',
+          })),
+        );
+        if (entries.length > 0) {
+          sessionStorage.removeItem('kbc_disconnected');
+          setProjects(entries);
+          navigate('/dashboard');
+          return;
+        }
+      }
+
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save configuration');
@@ -44,7 +71,7 @@ export function SetupPage() {
 
   async function handleAddOrg(org: OrgConfig) {
     const updated = { organizations: [...config.organizations, org] };
-    await handleSave(updated);
+    await handleSave(updated, true);
     setShowAddOrg(false);
   }
 
