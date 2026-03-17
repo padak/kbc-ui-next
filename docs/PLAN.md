@@ -138,7 +138,7 @@ Everything else from the legacy UI.
 ### Phase 7: Power-user features
 Things legacy UI doesn't have but power users want.
 
-- [ ] **Command palette** (Cmd+K) - navigate, search, run, create
+- [x] **Command palette** (Cmd+K) - search across all projects' buckets, components, configs
 - [ ] **Keyboard shortcuts** - vim-like navigation
 - [ ] **Bulk operations** - select multiple configs, run/delete/copy
 - [ ] **Favorites/bookmarks** - pin frequently used configs
