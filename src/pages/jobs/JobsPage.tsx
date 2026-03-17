@@ -110,7 +110,7 @@ export function JobsPage() {
                   const compName = getComponentName(job.component);
                   const compType = getComponentType(job.component);
                   const compIcon = getComponentIcon(job.component);
-                  const cfgName = getConfigName(job.component, job.config);
+                  const cfgName = job.config ? getConfigName(job.component, job.config) : 'Ad-hoc run';
                   const typeLabel = TYPE_LABELS[compType] ?? compType;
 
                   return (

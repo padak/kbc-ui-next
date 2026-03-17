@@ -172,7 +172,7 @@ export const JobSchema = z.object({
   parentRunId: z.string().nullable().default(null),
   status: z.enum(['created', 'waiting', 'processing', 'success', 'error', 'warning', 'terminating', 'terminated', 'cancelled']),
   component: z.string(),
-  config: z.string().default(''),
+  config: z.string().nullable().default(''),
   configRowIds: z.array(z.string()).default([]),
   mode: z.string().default('run'),
   createdTime: z.string(),
@@ -195,7 +195,7 @@ export const RunJobResponseSchema = z.object({
   id: z.string(),
   status: z.string(),
   component: z.string(),
-  config: z.string().default(''),
+  config: z.string().nullable().default(''),
   mode: z.string().default('run'),
   createdTime: z.string(),
 }).passthrough();
