@@ -69,12 +69,14 @@ Make the UI read-write. Every listing gets Create/Delete, every detail gets Run/
 - [ ] **Copy Configuration** - duplicate with new name
 - [ ] **Enable/Disable** - toggle on configs and rows
 
-### Phase 3: Schema-driven config editor
+### Phase 3: Schema-driven config editor (DONE)
 Replace raw JSON with auto-generated forms from component's configurationSchema.
 
-- [ ] **SchemaForm component** - renders JSON Schema as form
-- [ ] **Config editor page** - SchemaForm + raw JSON toggle
-- [ ] **Row editor page** - SchemaForm for row parameters
+- [x] **SchemaForm component** - recursive JSON Schema -> form (string, number, boolean, object, array, enum, password, url)
+- [x] **Config editor page** - Form/JSON toggle tabs with Save Changes
+- [x] **Row editor page** - SchemaForm for row parameters (configurationRowSchema)
+- [x] **Save mutations** - updateConfiguration + updateConfigurationRow via API
+- [x] **24 tests** - SchemaForm (15) + ConfigEditor (9)
 - [ ] **Input/Output mapping editor** - table picker + mapping UI
 - [ ] **Credentials section** - DB connection form (host, port, user, password)
 
