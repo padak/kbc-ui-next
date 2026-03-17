@@ -49,10 +49,10 @@ export class KeboolaValidationError extends Error {
 
 // -- cURL generator --
 
-function buildCurlCommand(url: string, token: string): string {
-  const maskedToken = token.length > 10
-    ? `${token.substring(0, 6)}...${token.substring(token.length - 4)}`
-    : '***';
+function buildCurlCommand(url: string, _token: string): string {
+  const maskedToken = _token.length > 4
+    ? `****${_token.substring(_token.length - 4)}`
+    : '****';
   return `curl -s -H "X-StorageApi-Token: ${maskedToken}" "${url}" | python3 -m json.tool`;
 }
 
@@ -64,6 +64,21 @@ function getConnectionOrThrow() {
     throw new KeboolaApiError('Not connected. Please provide stack URL and token.', 401, 'NOT_CONNECTED');
   }
   return { stackUrl, token };
+}
+
+// -- URL derivation helper --
+
+function deriveServiceUrl(stackUrl: string, serviceName: string): string {
+  const parsed = new URL(stackUrl);
+  if (!parsed.hostname.startsWith('connection.')) {
+    throw new KeboolaApiError(
+      `Invalid stack URL: hostname must start with "connection." (got "${parsed.hostname}")`,
+      400,
+      'INVALID_STACK_URL',
+    );
+  }
+  parsed.hostname = parsed.hostname.replace('connection.', `${serviceName}.`);
+  return parsed.origin;
 }
 
 // -- Core fetch (unvalidated) --
@@ -153,8 +168,8 @@ export async function fetchQueueApi<T>(
   options?: RequestInit,
 ): Promise<T> {
   const { stackUrl, token } = getConnectionOrThrow();
-  const queueUrl = stackUrl.replace('connection.', 'queue.');
-  const url = `${queueUrl}${path}`;
+  const serviceBase = deriveServiceUrl(stackUrl, 'queue');
+  const url = `${serviceBase}${path}`;
   const data = await rawFetch(url, token, options);
 
   const result = schema.safeParse(data);
@@ -198,8 +213,8 @@ export async function fetchQueueApiForProject<T>(
   schema: z.ZodSchema<T>,
   options?: RequestInit,
 ): Promise<T> {
-  const queueUrl = creds.stackUrl.replace('connection.', 'queue.');
-  const url = `${queueUrl}${path}`;
+  const serviceBase = deriveServiceUrl(creds.stackUrl, 'queue');
+  const url = `${serviceBase}${path}`;
   const data = await rawFetch(url, creds.token, options);
   const result = schema.safeParse(data);
   if (!result.success) {
@@ -219,9 +234,8 @@ export async function fetchServiceApi<T>(
   options?: RequestInit,
 ): Promise<T> {
   const { stackUrl, token } = getConnectionOrThrow();
-  // connection.north-europe.azure.keboola.com -> scheduler.north-europe.azure.keboola.com
-  const serviceUrl = stackUrl.replace('connection.', `${serviceName}.`);
-  const url = `${serviceUrl}${path}`;
+  const serviceBase = deriveServiceUrl(stackUrl, serviceName);
+  const url = `${serviceBase}${path}`;
   const data = await rawFetch(url, token, options);
 
   const result = schema.safeParse(data);

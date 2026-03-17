@@ -11,6 +11,8 @@ import { RunButton } from '@/components/RunButton';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { ConfigEditor } from '@/components/ConfigEditor';
 import { FlowBuilder } from '@/components/FlowBuilder';
+import { FlowEditor } from '@/components/FlowEditor';
+import { MappingEditor } from '@/components/MappingEditor';
 import { CodeEditor, extractCode } from '@/components/CodeEditor';
 import { useConfiguration, useComponent } from '@/hooks/useComponents';
 import { useDeleteConfiguration } from '@/hooks/useComponents';
@@ -124,6 +126,34 @@ export function ConfigurationDetailPage() {
             componentLookup={{ getComponentName, getComponentIcon, getConfigName }}
           />
         </div>
+      )}
+
+      {/* Flow Editor (for orchestrator/flow components) */}
+      {isFlow && config.configuration && (
+        <FlowEditor
+          configuration={config.configuration as Record<string, unknown>}
+          onSave={async (newConfig) => {
+            await updateConfig.mutateAsync({
+              configuration: newConfig,
+              changeDescription: 'Updated flow via kbc-ui-next',
+            });
+          }}
+          isSaving={updateConfig.isPending}
+        />
+      )}
+
+      {/* Mapping Editor (for transformation components) */}
+      {isTransformation && (
+        <MappingEditor
+          configuration={config.configuration as Record<string, unknown>}
+          onSave={async (newConfig) => {
+            await updateConfig.mutateAsync({
+              configuration: newConfig,
+              changeDescription: 'Updated mappings via kbc-ui-next',
+            });
+          }}
+          isSaving={updateConfig.isPending}
+        />
       )}
 
       {/* Code Editor (for transformation components) */}

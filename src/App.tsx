@@ -8,6 +8,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
+import { KeboolaApiError } from '@/api/client';
+import { useConnectionStore } from '@/stores/connection';
 import { AppLayout } from '@/components/AppLayout';
 import { ConnectPage } from '@/pages/ConnectPage';
 import { DashboardPage } from '@/pages/DashboardPage';
@@ -30,8 +32,20 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
-      retry: 1,
+      retry: (failureCount, error) => {
+        // Do not retry on 401 (expired/invalid token)
+        if (error instanceof KeboolaApiError && error.status === 401) return false;
+        return failureCount < 1;
+      },
       refetchOnWindowFocus: true,
+    },
+    mutations: {
+      onError: (error) => {
+        if (error instanceof KeboolaApiError && error.status === 401) {
+          useConnectionStore.getState().disconnect();
+          window.location.href = '/';
+        }
+      },
     },
   },
 });
@@ -62,7 +76,7 @@ export function App() {
           </Route>
         </Routes>
       </BrowserRouter>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
 }

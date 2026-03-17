@@ -1,0 +1,12 @@
+{
+  "last_run": "2026-03-17T00:00:00Z",
+  "last_processed_commit": "2e0e388",
+  "findings_summary": {
+    "critical": 1,
+    "high": 2,
+    "medium": 3,
+    "low": 3,
+    "info": 4
+  },
+  "status": "complete"
+}

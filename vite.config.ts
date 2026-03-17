@@ -19,6 +19,14 @@ function saveProjectsPlugin(): Plugin {
           res.end('Method not allowed');
           return;
         }
+        // CSRF protection: only allow requests from localhost
+        const origin = req.headers['origin'] ?? req.headers['referer'] ?? '';
+        const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(origin);
+        if (!isLocalhost) {
+          res.statusCode = 403;
+          res.end('Forbidden: only localhost requests allowed');
+          return;
+        }
         let body = '';
         req.on('data', (chunk: Buffer) => {
           body += chunk.toString();

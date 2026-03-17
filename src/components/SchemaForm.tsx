@@ -5,6 +5,7 @@
 // Supports: password fields, nested objects, checkboxes, enums, required validation.
 
 import { useState } from 'react';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 type SchemaFormProps = {
   schema: Record<string, unknown>;
@@ -97,7 +98,7 @@ function FormField({
             {label}
             {required && <span className="ml-0.5 text-red-500">*</span>}
           </label>
-          {description && <p className="text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: description }} />}
+          {description && <p className="text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }} />}
         </div>
       </div>
     );
@@ -124,7 +125,7 @@ function FormField({
             </option>
           ))}
         </select>
-        {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: description }} />}
+        {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }} />}
       </div>
     );
   }
@@ -156,7 +157,7 @@ function FormField({
           rows={hasObjects ? 8 : 3}
           className="block w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
-        {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: description }} />}
+        {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }} />}
       </div>
     );
   }
@@ -176,7 +177,7 @@ function FormField({
           rows={6}
           className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 font-mono text-xs shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
-        {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: description }} />}
+        {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }} />}
       </div>
     );
   }
@@ -206,7 +207,7 @@ function FormField({
         placeholder={placeholder}
         className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
       />
-      {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: description }} />}
+      {description && <p className="mt-1 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }} />}
     </div>
   );
 }
@@ -242,7 +243,7 @@ function ObjectSection({
       {isOpen && (
         <div className="border-t border-gray-200 px-4 py-3">
           {propSchema.description && (
-            <p className="mb-3 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: propSchema.description }} />
+            <p className="mb-3 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: sanitizeHtml(propSchema.description) }} />
           )}
           <SchemaForm
             schema={propSchema as Record<string, unknown>}
