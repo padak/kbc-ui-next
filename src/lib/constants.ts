@@ -32,6 +32,16 @@ export const ROUTES = {
   SETTINGS: '/settings',
 } as const;
 
+export const KEBOOLA_STACKS = [
+  { label: 'AWS US', url: 'https://connection.keboola.com' },
+  { label: 'AWS EU', url: 'https://connection.eu-central-1.keboola.com' },
+  { label: 'Azure EU', url: 'https://connection.north-europe.azure.keboola.com' },
+  { label: 'Google US', url: 'https://connection.us-east4.gcp.keboola.com' },
+  { label: 'Google EU', url: 'https://connection.europe-west3.gcp.keboola.com' },
+] as const;
+
+export const CUSTOM_STACKS_KEY = 'kbc_custom_stacks';
+
 export const NAV_ITEMS = [
   { label: 'Dashboard', path: ROUTES.DASHBOARD, icon: 'home' },
   { label: 'Storage', path: ROUTES.STORAGE, icon: 'database' },

@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { useConnect } from '@/hooks/useAuth';
+import { StackUrlPicker } from '@/components/StackUrlPicker';
 import { useConnectionStore } from '@/stores/connection';
 import type { ProjectEntry } from '@/stores/connection';
 import { loadProjects } from '@/lib/projectLoader';
@@ -160,18 +161,7 @@ export function ConnectPage() {
           <>
             <form onSubmit={handleManualSubmit} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <div className="mb-4">
-                <label htmlFor="stackUrl" className="mb-1 block text-sm font-medium text-gray-700">
-                  Stack URL
-                </label>
-                <input
-                  id="stackUrl"
-                  type="url"
-                  value={stackUrl}
-                  onChange={(e) => setStackUrl(e.target.value)}
-                  placeholder="https://connection.north-europe.azure.keboola.com"
-                  required
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <StackUrlPicker value={stackUrl} onChange={setStackUrl} />
               </div>
 
               <div className="mb-6">

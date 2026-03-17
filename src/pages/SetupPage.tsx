@@ -16,6 +16,7 @@ import {
   type OrgConfig,
 } from '@/lib/projectConfig';
 import { manageApi, type ManageProject } from '@/api/manage';
+import { StackUrlPicker } from '@/components/StackUrlPicker';
 
 export function SetupPage() {
   const navigate = useNavigate();
@@ -696,16 +697,7 @@ function AddOrgForm({ existingOrgIds, onAdd, onCancel }: AddOrgFormProps) {
       <h3 className="mb-4 text-sm font-semibold text-gray-900">Add Organization</h3>
 
       <div className="space-y-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Stack URL</label>
-          <input
-            type="url"
-            value={stack}
-            onChange={(e) => setStack(e.target.value)}
-            placeholder="https://connection.north-europe.azure.keboola.com"
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
+        <StackUrlPicker value={stack} onChange={setStack} />
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">
