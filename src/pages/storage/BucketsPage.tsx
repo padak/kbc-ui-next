@@ -1,8 +1,8 @@
 // file: pages/storage/BucketsPage.tsx
-// Storage page: lists all buckets with their tables, sizes, and metadata.
-// Navigates to table detail on row click. Groups by stage (in/out).
+// Storage page: lists all buckets with stage/sharing filter pills.
+// Navigates to bucket detail on row click. Shows Linked/Shared badges.
 // Used by: App.tsx route /storage.
-// Data from: hooks/useStorage.ts (useBuckets, useTables).
+// Data from: hooks/useStorage.ts (useBuckets).
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -13,6 +13,8 @@ import { useBuckets } from '@/hooks/useStorage';
 import { useCreateBucket } from '@/hooks/useMutations';
 import { formatBytes, formatDate, formatNumber } from '@/lib/formatters';
 import type { Bucket } from '@/api/schemas';
+
+const FILTERS = ['all', 'in', 'out', 'linked', 'shared'] as const;
 
 const COLUMNS = [
   {
@@ -67,12 +69,29 @@ const COLUMNS = [
   },
 ];
 
+function matchesFilter(b: Bucket, filter: string): boolean {
+  switch (filter) {
+    case 'in': return b.stage === 'in';
+    case 'out': return b.stage === 'out';
+    case 'linked': return !!b.sourceBucket;
+    case 'shared': return !!b.sharing && !b.sourceBucket;
+    default: return true;
+  }
+}
+
+function countByFilter(buckets: Bucket[], filter: string): number {
+  return buckets.filter((b) => matchesFilter(b, filter)).length;
+}
+
 export function BucketsPage() {
   const navigate = useNavigate();
   const { data: buckets, isLoading, error } = useBuckets();
   const createBucket = useCreateBucket();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newBucketStage, setNewBucketStage] = useState('in');
+  const [filter, setFilter] = useState<string>('all');
+
+  const filtered = buckets?.filter((b) => matchesFilter(b, filter));
 
   return (
     <div>
@@ -89,6 +108,26 @@ export function BucketsPage() {
         }
       />
 
+      <div className="mb-4 flex gap-2">
+        {FILTERS.map((f) => {
+          const count = buckets ? countByFilter(buckets, f) : 0;
+          const label = f === 'all' ? 'All' : f === 'in' ? 'In' : f === 'out' ? 'Out' : f === 'linked' ? 'Linked' : 'Shared';
+          return (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                filter === f
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {label}{f !== 'all' ? ` (${count})` : ''}
+            </button>
+          );
+        })}
+      </div>
+
       {error && (
         <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
           {error.message}
@@ -97,12 +136,13 @@ export function BucketsPage() {
 
       <DataTable
         columns={COLUMNS}
-        data={buckets ?? []}
+        data={filtered ?? []}
         keyFn={(b) => b.id}
         searchFn={(b, q) =>
           b.name.toLowerCase().includes(q) ||
           b.displayName.toLowerCase().includes(q) ||
-          b.description.toLowerCase().includes(q)
+          b.description.toLowerCase().includes(q) ||
+          (b.sourceBucket?.project?.name?.toLowerCase().includes(q) ?? false)
         }
         onRowClick={(b) => navigate(`/storage/${encodeURIComponent(b.id)}`)}
         isLoading={isLoading}
