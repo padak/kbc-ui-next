@@ -166,3 +166,27 @@ export async function fetchQueueApi<T>(
 
   return result.data;
 }
+
+// -- Validated fetch for service APIs (scheduler, etc.) --
+
+export async function fetchServiceApi<T>(
+  serviceName: string,
+  path: string,
+  schema: z.ZodSchema<T>,
+  options?: RequestInit,
+): Promise<T> {
+  const { stackUrl, token } = getConnectionOrThrow();
+  // connection.north-europe.azure.keboola.com -> scheduler.north-europe.azure.keboola.com
+  const serviceUrl = stackUrl.replace('connection.', `${serviceName}.`);
+  const url = `${serviceUrl}${path}`;
+  const data = await rawFetch(url, token, options);
+
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const curl = buildCurlCommand(url, token);
+    console.error('[Keboola] Validation failed for', path, result.error.issues);
+    throw new KeboolaValidationError(path, result.error, data, curl);
+  }
+
+  return result.data;
+}

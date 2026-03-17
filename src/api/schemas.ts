@@ -185,6 +185,22 @@ export const RunJobResponseSchema = z.object({
   createdTime: z.string(),
 }).passthrough();
 
+// -- Scheduler --
+
+export const ScheduleSchema = z.object({
+  id: z.string(),
+  schedule: z.object({
+    cronTab: z.string(),
+    timezone: z.string().default('UTC'),
+    state: z.string(), // 'enabled' | 'disabled'
+  }),
+  target: z.object({
+    componentId: z.string(),
+    configurationId: z.string(),
+    mode: z.string().default('run'),
+  }),
+}).passthrough();
+
 // -- Derived TypeScript types (use these instead of api/types.ts) --
 
 export type Bucket = z.infer<typeof BucketSchema>;
@@ -196,3 +212,4 @@ export type ConfigurationRow = z.infer<typeof ConfigurationRowSchema>;
 export type Job = z.infer<typeof JobSchema>;
 export type RunJobResponse = z.infer<typeof RunJobResponseSchema>;
 export type MetadataItem = z.infer<typeof MetadataItemSchema>;
+export type Schedule = z.infer<typeof ScheduleSchema>;
