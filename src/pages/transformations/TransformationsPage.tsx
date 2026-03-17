@@ -46,8 +46,12 @@ function useTransformations() {
         Promise.all(
           components.map((comp) => storageApi.listConfigFolders(comp.id).catch(() => [])),
         ).then((results) => results.flat()),
-        // Recent jobs
-        jobsApi.listJobs({ limit: 200 }).catch(() => []),
+        // Recent jobs per transformation component (not global - too many other jobs)
+        Promise.all(
+          components.map((comp) =>
+            jobsApi.listJobs({ limit: 50, componentId: comp.id }).catch(() => []),
+          ),
+        ).then((results) => results.flat()),
       ]);
 
       // Build folder map

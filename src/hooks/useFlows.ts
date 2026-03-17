@@ -31,7 +31,10 @@ export function useFlows() {
         componentsApi.listConfigurations('keboola.orchestrator').catch(() => [] as Configuration[]),
         componentsApi.listConfigurations('keboola.flow').catch(() => [] as Configuration[]),
         schedulerApi.listSchedules().catch(() => [] as Schedule[]),
-        jobsApi.listJobs({ limit: 200 }).catch(() => [] as Job[]),
+        Promise.all([
+          jobsApi.listJobs({ limit: 100, componentId: 'keboola.orchestrator' }).catch(() => []),
+          jobsApi.listJobs({ limit: 100, componentId: 'keboola.flow' }).catch(() => []),
+        ]).then((results) => results.flat() as Job[]),
         storageApi.listConfigFolders('keboola.orchestrator').catch(() => []),
         storageApi.listConfigFolders('keboola.flow').catch(() => []),
       ]);
