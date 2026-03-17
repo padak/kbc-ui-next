@@ -167,6 +167,49 @@ export async function fetchQueueApi<T>(
   return result.data;
 }
 
+// -- Explicit-project credentials type --
+
+export type ProjectCredentials = { stackUrl: string; token: string };
+
+// -- Validated fetch for explicit project (Storage API) --
+
+export async function fetchApiForProject<T>(
+  creds: ProjectCredentials,
+  path: string,
+  schema: z.ZodSchema<T>,
+  options: RequestInit = {},
+): Promise<T> {
+  const url = `${creds.stackUrl}/v2/storage${path}`;
+  const data = await rawFetch(url, creds.token, options);
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const curl = buildCurlCommand(url, creds.token);
+    console.error('[Keboola] Validation failed for', path, result.error.issues);
+    throw new KeboolaValidationError(path, result.error, data, curl);
+  }
+  return result.data;
+}
+
+// -- Validated fetch for explicit project (Queue API) --
+
+export async function fetchQueueApiForProject<T>(
+  creds: ProjectCredentials,
+  path: string,
+  schema: z.ZodSchema<T>,
+  options?: RequestInit,
+): Promise<T> {
+  const queueUrl = creds.stackUrl.replace('connection.', 'queue.');
+  const url = `${queueUrl}${path}`;
+  const data = await rawFetch(url, creds.token, options);
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const curl = buildCurlCommand(url, creds.token);
+    console.error('[Keboola] Validation failed for', path, result.error.issues);
+    throw new KeboolaValidationError(path, result.error, data, curl);
+  }
+  return result.data;
+}
+
 // -- Validated fetch for service APIs (scheduler, etc.) --
 
 export async function fetchServiceApi<T>(

@@ -5,7 +5,7 @@
 // Reference: GET /v2/storage/buckets, /tables, /tokens/verify.
 
 import { z } from 'zod';
-import { fetchApi, fetchManageApi } from './client';
+import { fetchApi, fetchManageApi, fetchApiForProject, type ProjectCredentials } from './client';
 import { BucketSchema, TableSchema, TokenVerifySchema } from './schemas';
 
 export const storageApi = {
@@ -62,5 +62,9 @@ export const storageApi = {
     return fetchApi(`/buckets/${bucketId}`, z.unknown(), {
       method: 'DELETE',
     });
+  },
+
+  listBucketsForProject(creds: ProjectCredentials) {
+    return fetchApiForProject(creds, '/buckets', z.array(BucketSchema));
   },
 };

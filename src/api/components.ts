@@ -5,7 +5,7 @@
 // Reference: GET /v2/storage/components, /components/{id}/configs.
 
 import { z } from 'zod';
-import { fetchApi } from './client';
+import { fetchApi, fetchApiForProject, type ProjectCredentials } from './client';
 import { ComponentSchema, ConfigurationSchema, ConfigurationRowSchema } from './schemas';
 
 export const componentsApi = {
@@ -73,5 +73,9 @@ export const componentsApi = {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
     });
+  },
+
+  listComponentsForProject(creds: ProjectCredentials) {
+    return fetchApiForProject(creds, '/components', z.array(ComponentSchema));
   },
 };

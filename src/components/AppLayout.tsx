@@ -8,7 +8,9 @@ import { useState } from 'react';
 import { Outlet, Navigate } from 'react-router';
 import { useConnectionStore } from '@/stores/connection';
 import { Sidebar } from './Sidebar';
+import { CommandPalette } from './CommandPalette';
 import { ErrorBoundary } from './ErrorBoundary';
+import { useMetadataPreload } from '@/hooks/useMetadataPreload';
 
 export function AppLayout() {
   const { isConnected, isLoading } = useConnectionStore();
@@ -30,13 +32,32 @@ export function AppLayout() {
   }
 
   return (
+    <AppLayoutInner
+      sidebarCollapsed={sidebarCollapsed}
+      onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+    />
+  );
+}
+
+// Inner component rendered after auth guard - safe to call hooks here
+function AppLayoutInner({
+  sidebarCollapsed,
+  onToggleSidebar,
+}: {
+  sidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
+}) {
+  useMetadataPreload();
+
+  return (
     <div className="flex h-screen">
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar collapsed={sidebarCollapsed} onToggle={onToggleSidebar} />
       <main className="min-w-0 flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
         <ErrorBoundary>
           <Outlet />
         </ErrorBoundary>
       </main>
+      <CommandPalette />
     </div>
   );
 }

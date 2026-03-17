@@ -30,6 +30,7 @@ export const ROUTES = {
   JOBS: '/jobs',
   JOB_DETAIL: '/jobs/:jobId',
   SETTINGS: '/settings',
+  ALL_JOBS: '/jobs/all',
 } as const;
 
 export const KEBOOLA_STACKS = [

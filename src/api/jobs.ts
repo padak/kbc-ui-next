@@ -5,7 +5,7 @@
 // Queue URL derived from stack URL (connection.* -> queue.*).
 
 import { z } from 'zod';
-import { fetchQueueApi } from './client';
+import { fetchQueueApi, fetchQueueApiForProject, type ProjectCredentials } from './client';
 import { JobSchema, RunJobResponseSchema } from './schemas';
 
 export const jobsApi = {
@@ -33,5 +33,12 @@ export const jobsApi = {
         ...(params.configRowIds?.length ? { configRowIds: params.configRowIds } : {}),
       }),
     });
+  },
+
+  listJobsForProject(creds: ProjectCredentials, params?: { limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    const query = searchParams.toString();
+    return fetchQueueApiForProject(creds, `/search/jobs?${query}`, z.array(JobSchema));
   },
 };

@@ -5,12 +5,14 @@
 // Data from: hooks/useJobs.ts, hooks/useComponentLookup.ts.
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, Link } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useJobs } from '@/hooks/useJobs';
 import { useComponentLookup } from '@/hooks/useComponentLookup';
+import { useConnectionStore } from '@/stores/connection';
 import { formatRelativeTime } from '@/lib/formatters';
+import { ROUTES } from '@/lib/constants';
 import type { Job } from '@/api/schemas';
 
 const STATUS_FILTERS = ['all', 'processing', 'success', 'error', 'waiting', 'terminated', 'cancelled'] as const;
@@ -36,6 +38,8 @@ function formatDuration(seconds: number | null | undefined): string {
 
 export function JobsPage() {
   const navigate = useNavigate();
+  const projects = useConnectionStore((s) => s.projects);
+  const isMultiProject = projects.length > 1;
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { data: jobs, isLoading, error } = useJobs({
     limit: 100,
@@ -48,6 +52,16 @@ export function JobsPage() {
       <PageHeader
         title="Jobs"
         description="Job execution history"
+        actions={
+          isMultiProject ? (
+            <Link
+              to={ROUTES.ALL_JOBS}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              All Projects
+            </Link>
+          ) : undefined
+        }
       />
 
       <div className="mb-4 flex gap-2">
