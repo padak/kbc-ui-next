@@ -34,6 +34,29 @@ This enables quick codebase discovery via: `find src -name '*.ts' -o -name '*.ts
 5. **API client is a thin fetch wrapper** - no abstractions beyond what's needed.
 6. **Co-locate by feature** - pages/storage/ has everything for the storage feature.
 
+## Zod Schema Workflow
+
+Every API response is validated through Zod schemas (`src/api/schemas.ts`). When adding a new endpoint:
+
+1. Read the legacy type from `~/github/kbc-ui/packages/api-client/src/clients/storage/*/types.ts`
+2. Verify with `curl` against the real API (the legacy types are hand-written and may be incomplete)
+3. Write a Zod schema with `.passthrough()` (allow extra fields) and `.optional()`/`.nullable()` where the API returns null
+4. TypeScript types are derived from schemas via `z.infer` - never define types separately
+
+Key patterns:
+- `.passthrough()` on every object schema (API returns more fields than we need)
+- `.nullable()` for fields the API may return as `null`
+- `.default()` for fields that may be missing entirely
+- Validation errors include a `curl` command for debugging
+
+Legacy type locations:
+- Storage (buckets, tables): `kbc-ui/packages/api-client/src/clients/storage/types.ts`
+- Components & configs: `kbc-ui/packages/api-client/src/clients/storage/componentsAndConfigurations/types.ts`
+- Queue/Jobs: `kbc-ui/packages/api-client/src/clients/queue/types.ts` (OpenAPI-generated)
+- Other services (AI, Chat, Editor, Vault...): `kbc-ui/packages/api-client/src/clients/*/\__generated__/schema.d.ts`
+
+Note: Storage API has NO OpenAPI spec. Types are hand-written. Always verify with `curl`.
+
 ## Commands
 
 ```bash

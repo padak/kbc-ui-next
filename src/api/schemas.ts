@@ -79,11 +79,14 @@ export const TokenVerifySchema = z.object({
   admin: z.object({
     id: z.number(),
     name: z.string(),
-    email: z.string(),
+    email: z.string().optional(),
     role: z.string(),
-  }).optional(),
+    features: z.array(z.string()).optional(),
+    isOrganizationMember: z.boolean().optional(),
+    isActivated: z.boolean().optional(),
+  }).passthrough().optional(),
   bucketPermissions: z.record(z.string(), z.string()).default({}),
-  componentAccess: z.array(z.string()).default([]),
+  componentAccess: z.array(z.string()).optional(), // not present on all token types
 }).passthrough();
 
 // -- Components --

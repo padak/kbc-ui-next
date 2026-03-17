@@ -27,7 +27,7 @@ export const storageApi = {
   },
 
   listBucketTables(bucketId: string) {
-    return fetchApi(`/buckets/${bucketId}/tables`, z.array(TableSchema));
+    return fetchApi(`/buckets/${bucketId}/tables?include=columns`, z.array(TableSchema));
   },
 
   getTable(tableId: string) {
