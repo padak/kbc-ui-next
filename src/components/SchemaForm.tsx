@@ -97,7 +97,7 @@ function FormField({
             {label}
             {required && <span className="ml-0.5 text-red-500">*</span>}
           </label>
-          {description && <p className="text-xs text-gray-500">{description}</p>}
+          {description && <p className="text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: description }} />}
         </div>
       </div>
     );
@@ -216,7 +216,7 @@ function ObjectSection({
       {isOpen && (
         <div className="border-t border-gray-200 px-4 py-3">
           {propSchema.description && (
-            <p className="mb-3 text-xs text-gray-500">{propSchema.description}</p>
+            <p className="mb-3 text-xs text-gray-500 [&_a]:text-blue-600 [&_a]:underline" dangerouslySetInnerHTML={{ __html: propSchema.description }} />
           )}
           <SchemaForm
             schema={propSchema as Record<string, unknown>}
