@@ -107,12 +107,16 @@ The killer differentiator. Connect multiple projects, search across them.
 - [x] **Org dashboard** - aggregate stats, per-project health cards, cross-project recent jobs
 - [x] **Stack URL picker** - preset Keboola stacks + custom URLs with localStorage memory
 
-### Phase 5: Flow builder & transformation editor
+### Phase 5: Flow builder & transformation editor (DONE - visualization)
 The two complex UIs that need custom implementation.
 
-- [ ] **Flow builder** - visual DAG editor for orchestration phases/tasks
-- [ ] **SQL editor** - CodeMirror/Monaco with Snowflake SQL syntax
-- [ ] **Python editor** - CodeMirror for Python transformations
+- [x] **Flow builder** - visual DAG with @xyflow/react + elkjs auto-layout (read-only)
+- [x] **SQL editor** - CodeEditor component with monospace textarea, dark theme
+- [x] **Python editor** - same CodeEditor, auto-detects language from componentId
+- [x] **extractCode helper** - finds SQL/Python from queries array or blocks structure
+- [x] **26 tests** - FlowBuilder (10) + CodeEditor (16)
+- [ ] **Flow editing** - add/remove phases and tasks via UI
+- [ ] **CodeMirror/Monaco** - syntax highlighting upgrade for SQL/Python
 - [ ] **Query results viewer** - tabular results display
 
 ### Phase 6: Remaining features
