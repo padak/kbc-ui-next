@@ -1,8 +1,8 @@
 // file: pages/components/ConfigurationDetailPage.tsx
-// Single configuration detail: JSON view, rows list with source/destination.
+// Single configuration detail: JSON view, rows list, flow builder, code editor.
 // Generic page that works for ALL component types (extractors, writers, etc.).
 // Used by: App.tsx route /components/:componentId/:configId.
-// Data from: hooks/useComponents.ts (useConfiguration).
+// Data from: hooks/useComponents.ts (useConfiguration), hooks/useComponentLookup.ts.
 
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
@@ -10,9 +10,12 @@ import { PageHeader } from '@/components/PageHeader';
 import { RunButton } from '@/components/RunButton';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { ConfigEditor } from '@/components/ConfigEditor';
+import { FlowBuilder } from '@/components/FlowBuilder';
+import { CodeEditor, extractCode } from '@/components/CodeEditor';
 import { useConfiguration, useComponent } from '@/hooks/useComponents';
 import { useDeleteConfiguration } from '@/hooks/useComponents';
 import { useUpdateConfiguration } from '@/hooks/useMutations';
+import { useComponentLookup } from '@/hooks/useComponentLookup';
 import { formatDate } from '@/lib/formatters';
 import type { ConfigurationRow } from '@/api/schemas';
 
@@ -49,6 +52,10 @@ export function ConfigurationDetailPage() {
   const deleteConfig = useDeleteConfiguration(componentId ?? '');
   const updateConfig = useUpdateConfiguration(componentId ?? '', configId ?? '');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const { getComponentName, getComponentIcon, getConfigName } = useComponentLookup();
+
+  const isFlow = componentId === 'keboola.orchestrator' || componentId === 'keboola.flow';
+  const isTransformation = component?.type === 'transformation';
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12 text-gray-400">Loading configuration...</div>;
@@ -107,6 +114,30 @@ export function ConfigurationDetailPage() {
           <p className="text-sm font-semibold">{formatDate(config.currentVersion.created)}</p>
         </div>
       </div>
+
+      {/* Flow Builder (for orchestrator/flow components) */}
+      {isFlow && config.configuration && (
+        <div className="mb-6">
+          <h2 className="mb-3 text-lg font-semibold text-gray-900">Flow Builder</h2>
+          <FlowBuilder
+            configuration={config.configuration as Record<string, unknown>}
+            componentLookup={{ getComponentName, getComponentIcon, getConfigName }}
+          />
+        </div>
+      )}
+
+      {/* Code Editor (for transformation components) */}
+      {isTransformation && (
+        <div className="mb-6">
+          <h2 className="mb-3 text-lg font-semibold text-gray-900">Code</h2>
+          <CodeEditor
+            value={extractCode(config.configuration as Record<string, unknown>)}
+            onChange={() => {}}
+            language={componentId?.includes('python') ? 'python' : 'sql'}
+            readOnly
+          />
+        </div>
+      )}
 
       {/* Configuration Rows */}
       {config.rows.length > 0 && (
