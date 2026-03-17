@@ -8,6 +8,7 @@ import { useParams, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { useBucket, useBucketTables } from '@/hooks/useStorage';
+import { useConnectionStore } from '@/stores/connection';
 import { formatBytes, formatDate, formatNumber } from '@/lib/formatters';
 import type { Table } from '@/api/schemas';
 
@@ -49,6 +50,11 @@ export function BucketDetailPage() {
   const navigate = useNavigate();
   const { data: bucket } = useBucket(bucketId ?? '');
   const { data: tables, isLoading, error } = useBucketTables(bucketId ?? '');
+  const { projects, setActiveProject } = useConnectionStore();
+
+  const sourceProjectEntry = projects.find(
+    (p) => p.projectId === bucket?.sourceBucket?.project?.id,
+  );
 
   const title = bucket ? `${bucket.displayName || bucket.name}` : 'Bucket';
 
@@ -66,6 +72,43 @@ export function BucketDetailPage() {
           </button>
         }
       />
+
+      {bucket?.sourceBucket?.project && (
+        <div className="mb-4 rounded-lg border border-purple-200 bg-purple-50 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-purple-900">
+                Linked from project: {bucket.sourceBucket.project.name}
+              </p>
+              <p className="mt-0.5 text-xs text-purple-600">
+                Source bucket: {bucket.sourceBucket.id}
+                {bucket.sourceBucket.sharedBy && (
+                  <> &middot; Shared by {bucket.sourceBucket.sharedBy.name}</>
+                )}
+              </p>
+            </div>
+            {sourceProjectEntry && (
+              <button
+                onClick={() => {
+                  setActiveProject(sourceProjectEntry.id);
+                  navigate(`/storage/${encodeURIComponent(bucket.sourceBucket!.id)}`);
+                }}
+                className="rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
+              >
+                Go to source project
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {bucket?.sharing && !bucket?.sourceBucket && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm font-medium text-blue-900">
+            This bucket is shared ({bucket.sharing})
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">

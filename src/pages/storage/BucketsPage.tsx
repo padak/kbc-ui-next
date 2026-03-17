@@ -30,7 +30,21 @@ const COLUMNS = [
   {
     key: 'name',
     label: 'Name',
-    render: (b: Bucket) => <span className="font-medium">{b.displayName || b.name}</span>,
+    render: (b: Bucket) => (
+      <div>
+        <span className="font-medium">{b.displayName || b.name}</span>
+        {b.sourceBucket?.project && (
+          <span className="ml-2 inline-flex items-center rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-medium text-purple-700">
+            Linked from {b.sourceBucket.project.name}
+          </span>
+        )}
+        {b.sharing && !b.sourceBucket && (
+          <span className="ml-2 inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+            Shared
+          </span>
+        )}
+      </div>
+    ),
     sortValue: (b: Bucket) => b.displayName || b.name,
   },
   {

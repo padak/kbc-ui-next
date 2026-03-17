@@ -32,6 +32,21 @@ export const BucketSchema = z.object({
   tables: z.string().default(''), // URL to tables endpoint, not an array
   backend: z.string().default(''),
   metadata: z.array(MetadataItemSchema).default([]),
+  sharing: z.string().nullable().optional(), // 'specific-projects' | 'organization' | null
+  sourceBucket: z.object({
+    id: z.string(),
+    displayName: z.string().default(''),
+    sharing: z.string().nullable().optional(),
+    project: z.object({
+      id: z.number(),
+      name: z.string(),
+    }).optional(),
+    sharedBy: z.object({
+      id: z.number(),
+      name: z.string(),
+      date: z.string(),
+    }).optional(),
+  }).nullable().optional(),
 }).passthrough(); // allow extra fields we don't use yet
 
 export const TableSchema = z.object({
