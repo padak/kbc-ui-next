@@ -56,13 +56,15 @@ Key differences from legacy UI:
 - [x] Error boundary
 - [x] 16 tests
 
-### Phase 2: Actions & mutations
+### Phase 2: Actions & mutations (DONE)
 Make the UI read-write. Every listing gets Create/Delete, every detail gets Run/Edit.
 
-- [ ] **Run Component** - POST to Queue API, show job status
-- [ ] **Create Configuration** - modal with name/description
-- [ ] **Delete Configuration** - confirmation modal
-- [ ] **Create Bucket** - modal with name/stage/backend
+- [x] **Run Component** - POST to Queue API, auto-navigate to job detail
+- [x] **Create Configuration** - modal with name/description, navigate to new config
+- [x] **Delete Configuration** - confirmation modal with error handling
+- [x] **Create Bucket** - modal with name/stage selector
+- [x] **Jobs with names** - component/config name resolution via useComponentLookup
+- [x] **Rich Flows page** - schedule, last change, last run, status (Scheduler API)
 - [ ] **Edit inline** - click-to-edit on names, descriptions
 - [ ] **Copy Configuration** - duplicate with new name
 - [ ] **Enable/Disable** - toggle on configs and rows
