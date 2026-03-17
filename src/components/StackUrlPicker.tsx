@@ -21,7 +21,25 @@ function loadCustomStacks(): string[] {
   }
 }
 
+function isValidUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getShortLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace('connection.', '').replace('.keboola.com', '');
+  } catch {
+    return url;
+  }
+}
+
 function saveCustomStack(url: string) {
+  if (!isValidUrl(url)) return;
   const existing = loadCustomStacks();
   if (!existing.includes(url) && !KEBOOLA_STACKS.some((s) => s.url === url)) {
     localStorage.setItem(CUSTOM_STACKS_KEY, JSON.stringify([...existing, url]));
@@ -46,7 +64,7 @@ export function StackUrlPicker({ value, onChange }: StackUrlPickerProps) {
 
   function handleAddCustom() {
     const normalized = customUrl.trim().replace(/\/+$/, '');
-    if (!normalized) return;
+    if (!normalized || !isValidUrl(normalized)) return;
     saveCustomStack(normalized);
     setCustomStacks(loadCustomStacks());
     onChange(normalized);
@@ -72,8 +90,8 @@ export function StackUrlPicker({ value, onChange }: StackUrlPickerProps) {
             {stack.label}
           </button>
         ))}
-        {customStacks.map((url) => {
-          const shortLabel = new URL(url).hostname.replace('connection.', '').replace('.keboola.com', '');
+        {customStacks.filter(isValidUrl).map((url) => {
+          const shortLabel = getShortLabel(url);
           return (
             <button
               key={url}
