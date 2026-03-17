@@ -154,6 +154,7 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
     localStorage.removeItem(STORAGE_KEY.ACTIVE_PROJECT_ID);
     localStorage.removeItem(STORAGE_KEY.STACK_URL);
     localStorage.removeItem(STORAGE_KEY.TOKEN);
+    sessionStorage.setItem('kbc_disconnected', 'true');
     set({
       projects: [],
       activeProjectId: null,

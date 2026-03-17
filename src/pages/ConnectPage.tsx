@@ -33,6 +33,9 @@ export function ConnectPage() {
     if (autoLoadAttempted.current || isConnected) return;
     autoLoadAttempted.current = true;
 
+    // Don't auto-reconnect if user explicitly disconnected (resets on tab close)
+    if (sessionStorage.getItem('kbc_disconnected')) return;
+
     const hasEnvProjects = !!import.meta.env.VITE_PROJECTS;
     const hasSingleProject = !!import.meta.env.VITE_STACK_URL && !!import.meta.env.VITE_STORAGE_TOKEN;
 
@@ -62,6 +65,7 @@ export function ConnectPage() {
     if (!stackUrl.trim() || !token.trim()) return;
 
     try {
+      sessionStorage.removeItem('kbc_disconnected');
       await connect(stackUrl.trim(), token.trim());
       navigate(ROUTES.DASHBOARD);
     } catch {
