@@ -80,26 +80,29 @@ Replace raw JSON with auto-generated forms from component's configurationSchema.
 - [ ] **Input/Output mapping editor** - table picker + mapping UI
 - [ ] **Credentials section** - DB connection form (host, port, user, password)
 
-### Phase 4: Multi-project
+### Phase 4: Multi-project (DONE - core)
 The killer differentiator. Connect multiple projects, search across them.
 
-**Setup flow:**
-1. User provides Management API token + stack URL
-2. UI calls `/manage/organizations/{orgId}/projects` to list projects
-3. User selects which projects to register
-4. For each: `POST /manage/projects/{projectId}/tokens` creates Storage token
-5. Save to `projects.secret.json` (gitignored)
-6. Management token discarded (never stored)
+**Setup flow** (implemented):
+1. User enters stack URL + Management API token on `/setup`
+2. "Discover Organizations" → GET /manage/maintainers → /maintainers/{id}/organizations
+3. Searchable org list (for large orgs with 1000+ entries)
+4. "Discover Projects" → GET /manage/organizations/{id}/projects
+5. Select projects → POST /manage/projects/{id}/tokens (auto-creates Storage tokens)
+6. Save to `projects.secret.json` (gitignored)
+7. Management token never stored - only in React state during session
+8. Remove org can optionally delete tokens from Keboola (requires manage token)
 
-Reference: `~/github/keboola_agent_cli/` org command (ManageClient, OrgService)
-
-- [ ] **projects.secret.json** - multi-project config file with stack+token per project
-- [ ] **Management API setup page** - org discovery, project selection, token creation
-- [ ] **Multi-project connection store** - Zustand with N projects, active project context
-- [ ] **Project switcher sidebar** - org tree with projects, click to switch
+- [x] **projects.secret.json** - org-based config: organizations[] → projects[]
+- [x] **Management API setup page** - maintainer discovery, searchable org list, project selection, token creation
+- [x] **Multi-project connection store** - Zustand with N projects, active project, derived stackUrl/token
+- [x] **Project switcher sidebar** - org-grouped project list, click to switch, instant cache
+- [x] **Query key prefixing** - all TanStack Query keys prefixed with activeProjectId
+- [x] **Data catalog awareness** - shared buckets show "Linked from {project}", "Go to source project" button
+- [x] **Storage filters** - All, In, Out, Linked, Shared filter pills with counts
+- [x] **Org removal with token cleanup** - optional Keboola token deletion via manage token
 - [ ] **Metadata preload** - load buckets/components/configs from all projects into cache
 - [ ] **Global search (Cmd+K)** - search across all cached project metadata
-- [ ] **Data catalog awareness** - shared buckets show source project, cross-project navigation
 - [ ] **Multi-project jobs view** - all jobs across all projects in one table
 
 ### Phase 5: Flow builder & transformation editor
