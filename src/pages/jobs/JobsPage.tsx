@@ -73,7 +73,7 @@ export function JobsPage() {
       {isLoading ? (
         <div className="flex items-center justify-center py-12 text-gray-400">Loading jobs...</div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200">
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>

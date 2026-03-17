@@ -61,7 +61,7 @@ export function TableDetailPage() {
 
       {/* Columns */}
       <h2 className="mb-3 text-lg font-semibold text-gray-900">Columns</h2>
-      <div className="mb-6 overflow-hidden rounded-lg border border-gray-200">
+      <div className="mb-6 overflow-x-auto rounded-lg border border-gray-200">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -90,7 +90,7 @@ export function TableDetailPage() {
       {table.metadata.length > 0 && (
         <>
           <h2 className="mb-3 text-lg font-semibold text-gray-900">Metadata</h2>
-          <div className="overflow-hidden rounded-lg border border-gray-200">
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
