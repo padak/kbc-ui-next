@@ -27,17 +27,21 @@ export function useFlows() {
     queryKey: [activeProjectId, 'flows', 'aggregated'],
     queryFn: async () => {
       // Fetch all data sources in parallel
-      const [orchestratorConfigs, flowConfigs, schedules, recentJobs, orchestratorFolders, flowFolders] = await Promise.all([
+      // Step 1: Fetch configs, schedules, and folders in parallel
+      const [orchestratorConfigs, flowConfigs, schedules, orchestratorFolders, flowFolders] = await Promise.all([
         componentsApi.listConfigurations('keboola.orchestrator').catch(() => [] as Configuration[]),
         componentsApi.listConfigurations('keboola.flow').catch(() => [] as Configuration[]),
         schedulerApi.listSchedules().catch(() => [] as Schedule[]),
-        Promise.all([
-          jobsApi.listJobs({ limit: 100, componentId: 'keboola.orchestrator' }).catch(() => []),
-          jobsApi.listJobs({ limit: 100, componentId: 'keboola.flow' }).catch(() => []),
-        ]).then((results) => results.flat() as Job[]),
         storageApi.listConfigFolders('keboola.orchestrator').catch(() => []),
         storageApi.listConfigFolders('keboola.flow').catch(() => []),
       ]);
+
+      // Step 2: Fetch last job per config via grouped-jobs API
+      const allConfigIds = [...orchestratorConfigs, ...flowConfigs].map((c) => c.id);
+      const latestJobs = await jobsApi.getLatestJobsPerConfig(
+        ['keboola.orchestrator', 'keboola.flow'],
+        allConfigIds,
+      ).catch(() => ({} as Record<string, Job>));
 
       // Build folder lookup: configId -> folderName
       const folderMap = new Map<string, string>();
@@ -54,15 +58,6 @@ export function useFlows() {
         scheduleMap.set(s.target.configurationId, s);
       }
 
-      // Build last job lookup: componentId:configId -> Job
-      const jobMap = new Map<string, Job>();
-      for (const j of recentJobs) {
-        const key = `${j.component}:${j.config}`;
-        if (!jobMap.has(key)) {
-          jobMap.set(key, j); // first = most recent
-        }
-      }
-
       // Merge into FlowItems
       const items: FlowItem[] = [];
 
@@ -71,7 +66,7 @@ export function useFlows() {
           config,
           componentId: 'keboola.orchestrator',
           schedule: scheduleMap.get(config.id) ?? null,
-          lastJob: jobMap.get(`keboola.orchestrator:${config.id}`) ?? null,
+          lastJob: latestJobs[config.id] ?? null,
           folder: folderMap.get(config.id) ?? null,
         });
       }
@@ -81,7 +76,7 @@ export function useFlows() {
           config,
           componentId: 'keboola.flow',
           schedule: scheduleMap.get(config.id) ?? null,
-          lastJob: jobMap.get(`keboola.flow:${config.id}`) ?? null,
+          lastJob: latestJobs[config.id] ?? null,
           folder: folderMap.get(config.id) ?? null,
         });
       }

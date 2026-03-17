@@ -33,39 +33,29 @@ function useTransformations() {
     queryFn: async () => {
       if (!components?.length) return [];
 
-      // Fetch configs, folders, and jobs in parallel
-      const [configsByComponent, allFolderData, recentJobs] = await Promise.all([
-        // Configs for each transformation component
+      // Step 1: Fetch configs and folders in parallel
+      const [configsByComponent, allFolderData] = await Promise.all([
         Promise.all(
           components.map(async (comp) => ({
             component: comp,
             configs: await componentsApi.listConfigurations(comp.id).catch(() => []),
           })),
         ),
-        // Folder metadata for all transformation components
         Promise.all(
           components.map((comp) => storageApi.listConfigFolders(comp.id).catch(() => [])),
         ).then((results) => results.flat()),
-        // Recent jobs per transformation component (not global - too many other jobs)
-        Promise.all(
-          components.map((comp) =>
-            jobsApi.listJobs({ limit: 50, componentId: comp.id }).catch(() => []),
-          ),
-        ).then((results) => results.flat()),
       ]);
+
+      // Step 2: Now that we have configs, fetch last job per config via grouped-jobs
+      const allConfigIds = configsByComponent.flatMap(({ configs }) => configs.map((c) => c.id));
+      const componentIds = components.map((c) => c.id);
+      const latestJobs = await jobsApi.getLatestJobsPerConfig(componentIds, allConfigIds).catch(() => ({} as Record<string, Job>));
 
       // Build folder map
       const folderMap = new Map<string, string>();
       for (const item of allFolderData) {
         const meta = item.metadata.find((m) => m.key === 'KBC.configuration.folderName');
         if (meta) folderMap.set(item.configurationId, meta.value);
-      }
-
-      // Build last job map
-      const jobMap = new Map<string, Job>();
-      for (const job of recentJobs) {
-        const key = `${job.component}:${job.config}`;
-        if (!jobMap.has(key)) jobMap.set(key, job);
       }
 
       // Merge
@@ -76,7 +66,7 @@ function useTransformations() {
             config,
             component,
             folder: folderMap.get(config.id) ?? null,
-            lastJob: jobMap.get(`${component.id}:${config.id}`) ?? null,
+            lastJob: latestJobs[config.id] ?? null,
           });
         }
       }
