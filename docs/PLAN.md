@@ -101,9 +101,11 @@ The killer differentiator. Connect multiple projects, search across them.
 - [x] **Data catalog awareness** - shared buckets show "Linked from {project}", "Go to source project" button
 - [x] **Storage filters** - All, In, Out, Linked, Shared filter pills with counts
 - [x] **Org removal with token cleanup** - optional Keboola token deletion via manage token
-- [ ] **Metadata preload** - load buckets/components/configs from all projects into cache
-- [ ] **Global search (Cmd+K)** - search across all cached project metadata
-- [ ] **Multi-project jobs view** - all jobs across all projects in one table
+- [x] **Metadata preload** - background prefetch buckets+components from all projects
+- [x] **Global search (Cmd+K)** - command palette searching buckets, components, configs across all projects
+- [x] **Multi-project jobs view** - /jobs/all with jobs from all projects merged by time
+- [x] **Org dashboard** - aggregate stats, per-project health cards, cross-project recent jobs
+- [x] **Stack URL picker** - preset Keboola stacks + custom URLs with localStorage memory
 
 ### Phase 5: Flow builder & transformation editor
 The two complex UIs that need custom implementation.
