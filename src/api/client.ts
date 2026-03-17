@@ -150,11 +150,12 @@ export async function fetchManageApi<T>(
 export async function fetchQueueApi<T>(
   path: string,
   schema: z.ZodSchema<T>,
+  options?: RequestInit,
 ): Promise<T> {
   const { stackUrl, token } = getConnectionOrThrow();
   const queueUrl = stackUrl.replace('connection.', 'queue.');
   const url = `${queueUrl}${path}`;
-  const data = await rawFetch(url, token);
+  const data = await rawFetch(url, token, options);
 
   const result = schema.safeParse(data);
   if (!result.success) {

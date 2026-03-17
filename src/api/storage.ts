@@ -44,4 +44,23 @@ export const storageApi = {
       z.unknown(),
     );
   },
+
+  createBucket(data: { name: string; stage: string; description?: string; backend?: string }) {
+    const body = new URLSearchParams();
+    body.set('name', data.name);
+    body.set('stage', data.stage);
+    if (data.description) body.set('description', data.description);
+    if (data.backend) body.set('backend', data.backend);
+    return fetchApi('/buckets', BucketSchema, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+  },
+
+  deleteBucket(bucketId: string) {
+    return fetchApi(`/buckets/${bucketId}`, z.unknown(), {
+      method: 'DELETE',
+    });
+  },
 };

@@ -26,16 +26,28 @@ export const componentsApi = {
   },
 
   createConfiguration(componentId: string, data: { name: string; description?: string; configuration?: Record<string, unknown> }) {
+    const body = new URLSearchParams();
+    body.set('name', data.name);
+    if (data.description) body.set('description', data.description);
+    if (data.configuration) body.set('configuration', JSON.stringify(data.configuration));
     return fetchApi(`/components/${componentId}/configs`, ConfigurationSchema, {
       method: 'POST',
-      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
     });
   },
 
-  updateConfiguration(componentId: string, configId: string, data: { name?: string; description?: string; configuration?: Record<string, unknown>; changeDescription?: string }) {
+  updateConfiguration(componentId: string, configId: string, data: { name?: string; description?: string; configuration?: Record<string, unknown>; changeDescription?: string; isDisabled?: boolean }) {
+    const body = new URLSearchParams();
+    if (data.name !== undefined) body.set('name', data.name);
+    if (data.description !== undefined) body.set('description', data.description);
+    if (data.configuration) body.set('configuration', JSON.stringify(data.configuration));
+    if (data.changeDescription) body.set('changeDescription', data.changeDescription);
+    if (data.isDisabled !== undefined) body.set('isDisabled', String(data.isDisabled));
     return fetchApi(`/components/${componentId}/configs/${configId}`, ConfigurationSchema, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
     });
   },
 

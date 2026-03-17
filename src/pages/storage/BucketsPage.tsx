@@ -4,10 +4,13 @@
 // Used by: App.tsx route /storage.
 // Data from: hooks/useStorage.ts (useBuckets, useTables).
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
+import { CreateModal } from '@/components/CreateModal';
 import { useBuckets } from '@/hooks/useStorage';
+import { useCreateBucket } from '@/hooks/useMutations';
 import { formatBytes, formatDate, formatNumber } from '@/lib/formatters';
 import type { Bucket } from '@/api/schemas';
 
@@ -53,12 +56,23 @@ const COLUMNS = [
 export function BucketsPage() {
   const navigate = useNavigate();
   const { data: buckets, isLoading, error } = useBuckets();
+  const createBucket = useCreateBucket();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newBucketStage, setNewBucketStage] = useState('in');
 
   return (
     <div>
       <PageHeader
         title="Storage"
         description={`${buckets?.length ?? 0} buckets`}
+        actions={
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            + Create Bucket
+          </button>
+        }
       />
 
       {error && (
@@ -79,6 +93,31 @@ export function BucketsPage() {
         onRowClick={(b) => navigate(`/storage/${encodeURIComponent(b.id)}`)}
         isLoading={isLoading}
         emptyMessage="No buckets found"
+      />
+
+      <CreateModal
+        title="New Bucket"
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={async (data) => {
+          await createBucket.mutateAsync({ name: data.name, stage: newBucketStage, description: data.description });
+          setShowCreateModal(false);
+        }}
+        isPending={createBucket.isPending}
+        error={createBucket.error instanceof Error ? createBucket.error : null}
+        extraFields={
+          <div className="mb-4">
+            <label className="mb-1 block text-sm font-medium text-gray-700">Stage</label>
+            <select
+              value={newBucketStage}
+              onChange={(e) => setNewBucketStage(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="in">in</option>
+              <option value="out">out</option>
+            </select>
+          </div>
+        }
       />
     </div>
   );

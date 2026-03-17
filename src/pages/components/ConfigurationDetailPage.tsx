@@ -4,9 +4,13 @@
 // Used by: App.tsx route /components/:componentId/:configId.
 // Data from: hooks/useComponents.ts (useConfiguration).
 
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
+import { RunButton } from '@/components/RunButton';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { useConfiguration } from '@/hooks/useComponents';
+import { useDeleteConfiguration } from '@/hooks/useComponents';
 import { formatDate } from '@/lib/formatters';
 import type { ConfigurationRow } from '@/api/schemas';
 
@@ -39,6 +43,8 @@ export function ConfigurationDetailPage() {
   const { componentId, configId } = useParams<{ componentId: string; configId: string }>();
   const navigate = useNavigate();
   const { data: config, isLoading, error } = useConfiguration(componentId ?? '', configId ?? '');
+  const deleteConfig = useDeleteConfiguration(componentId ?? '');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12 text-gray-400">Loading configuration...</div>;
@@ -60,12 +66,21 @@ export function ConfigurationDetailPage() {
         title={config.name}
         description={config.description || `Version ${config.version}`}
         actions={
-          <button
-            onClick={() => navigate(`/components/${encodeURIComponent(componentId ?? '')}`)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            Back to Configurations
-          </button>
+          <div className="flex items-center gap-2">
+            <RunButton componentId={componentId ?? ''} configId={configId ?? ''} label="Run Component" />
+            <button
+              onClick={() => navigate(`/components/${encodeURIComponent(componentId ?? '')}`)}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              Back
+            </button>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </div>
         }
       />
 
@@ -160,6 +175,19 @@ export function ConfigurationDetailPage() {
       <pre className="overflow-x-auto rounded-lg border border-gray-200 bg-gray-900 p-4 text-sm text-green-400">
         {JSON.stringify(config.configuration, null, 2)}
       </pre>
+
+      <ConfirmModal
+        title="Delete Configuration"
+        message={`Are you sure you want to delete "${config.name}"? This action cannot be undone.`}
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={async () => {
+          await deleteConfig.mutateAsync(configId ?? '');
+          navigate(`/components/${encodeURIComponent(componentId ?? '')}`);
+        }}
+        isPending={deleteConfig.isPending}
+        error={deleteConfig.error instanceof Error ? deleteConfig.error : null}
+      />
     </div>
   );
 }

@@ -174,6 +174,17 @@ export const JobSchema = z.object({
   }).default({ id: '' }),
 }).passthrough();
 
+// -- Jobs: Run Job Response (subset returned by POST /jobs) --
+
+export const RunJobResponseSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  component: z.string(),
+  config: z.string().default(''),
+  mode: z.string().default('run'),
+  createdTime: z.string(),
+}).passthrough();
+
 // -- Derived TypeScript types (use these instead of api/types.ts) --
 
 export type Bucket = z.infer<typeof BucketSchema>;
@@ -183,4 +194,5 @@ export type Component = z.infer<typeof ComponentSchema>;
 export type Configuration = z.infer<typeof ConfigurationSchema>;
 export type ConfigurationRow = z.infer<typeof ConfigurationRowSchema>;
 export type Job = z.infer<typeof JobSchema>;
+export type RunJobResponse = z.infer<typeof RunJobResponseSchema>;
 export type MetadataItem = z.infer<typeof MetadataItemSchema>;

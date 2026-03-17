@@ -4,10 +4,13 @@
 // Used by: App.tsx route /components/:componentId.
 // Data from: hooks/useComponents.ts (useComponent, useConfigurations).
 
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
+import { CreateModal } from '@/components/CreateModal';
 import { useComponent, useConfigurations } from '@/hooks/useComponents';
+import { useCreateConfiguration } from '@/hooks/useMutations';
 import { formatDate } from '@/lib/formatters';
 import type { Configuration } from '@/api/schemas';
 
@@ -59,6 +62,8 @@ export function ConfigurationsPage() {
   const navigate = useNavigate();
   const { data: component } = useComponent(componentId ?? '');
   const { data: configs, isLoading, error } = useConfigurations(componentId ?? '');
+  const createConfig = useCreateConfiguration(componentId ?? '');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   return (
     <div>
@@ -66,12 +71,20 @@ export function ConfigurationsPage() {
         title={component?.name ?? componentId ?? ''}
         description={`${configs?.length ?? 0} configurations`}
         actions={
-          <button
-            onClick={() => navigate('/components')}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            Back to Components
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              + New Configuration
+            </button>
+            <button
+              onClick={() => navigate('/components')}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              Back to Components
+            </button>
+          </div>
         }
       />
 
@@ -90,6 +103,19 @@ export function ConfigurationsPage() {
         onRowClick={(c) => navigate(`/components/${encodeURIComponent(componentId ?? '')}/${c.id}`)}
         isLoading={isLoading}
         emptyMessage="No configurations"
+      />
+
+      <CreateModal
+        title={`New ${component?.name ?? ''} Configuration`}
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={async (data) => {
+          const newConfig = await createConfig.mutateAsync(data);
+          setShowCreateModal(false);
+          navigate(`/components/${encodeURIComponent(componentId ?? '')}/${newConfig.id}`);
+        }}
+        isPending={createConfig.isPending}
+        error={createConfig.error instanceof Error ? createConfig.error : null}
       />
     </div>
   );

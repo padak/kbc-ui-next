@@ -6,7 +6,7 @@
 
 import { z } from 'zod';
 import { fetchQueueApi } from './client';
-import { JobSchema } from './schemas';
+import { JobSchema, RunJobResponseSchema } from './schemas';
 
 export const jobsApi = {
   listJobs(params?: { limit?: number; offset?: number; status?: string; componentId?: string }) {
@@ -21,5 +21,17 @@ export const jobsApi = {
 
   getJob(jobId: string) {
     return fetchQueueApi(`/jobs/${jobId}`, JobSchema);
+  },
+
+  createJob(params: { component: string; config?: string; mode?: string; configRowIds?: string[] }) {
+    return fetchQueueApi('/jobs', RunJobResponseSchema, {
+      method: 'POST',
+      body: JSON.stringify({
+        component: params.component,
+        config: params.config,
+        mode: params.mode ?? 'run',
+        ...(params.configRowIds?.length ? { configRowIds: params.configRowIds } : {}),
+      }),
+    });
   },
 };
