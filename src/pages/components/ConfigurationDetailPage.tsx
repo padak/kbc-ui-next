@@ -1,5 +1,5 @@
 // file: pages/components/ConfigurationDetailPage.tsx
-// Single configuration detail: JSON view, rows list, metadata.
+// Single configuration detail: JSON view, rows list with source/destination.
 // Generic page that works for ALL component types (extractors, writers, etc.).
 // Used by: App.tsx route /components/:componentId/:configId.
 // Data from: hooks/useComponents.ts (useConfiguration).
@@ -8,6 +8,32 @@ import { useParams, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { useConfiguration } from '@/hooks/useComponents';
 import { formatDate } from '@/lib/formatters';
+import type { ConfigurationRow } from '@/api/schemas';
+
+// Extract source/destination info from row configuration JSON.
+// DB extractors use parameters.table.{schema,tableName} for source
+// and parameters.outputTable for destination.
+// This is a best-effort extraction - not all components use this structure.
+function extractRowMeta(row: ConfigurationRow) {
+  const params = (row.configuration as Record<string, unknown>)?.parameters as Record<string, unknown> | undefined;
+  if (!params) return { source: null, destination: null, primaryKey: null };
+
+  // Source: table.schema.tableName (DB extractors)
+  const table = params.table as Record<string, unknown> | undefined;
+  const schema = table?.schema as string | undefined;
+  const tableName = table?.tableName as string | undefined;
+  const source = schema && tableName ? `${schema}.${tableName}` : null;
+
+  // Destination: outputTable
+  const outputTable = params.outputTable as string | undefined;
+  const destination = outputTable ?? null;
+
+  // Primary key
+  const pk = params.primaryKey as string[] | undefined;
+  const primaryKey = pk?.length ? pk.join(', ') : null;
+
+  return { source, destination, primaryKey };
+}
 
 export function ConfigurationDetailPage() {
   const { componentId, configId } = useParams<{ componentId: string; configId: string }>();
@@ -23,6 +49,10 @@ export function ConfigurationDetailPage() {
   }
 
   if (!config) return null;
+
+  // Check if any row has source/destination info (to show extra columns)
+  const rowsMeta = config.rows.map((row) => ({ row, meta: extractRowMeta(row) }));
+  const hasSourceInfo = rowsMeta.some((r) => r.meta.source || r.meta.destination);
 
   return (
     <div>
@@ -62,25 +92,54 @@ export function ConfigurationDetailPage() {
       {/* Configuration Rows */}
       {config.rows.length > 0 && (
         <div className="mb-6">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Rows</h2>
+          <h2 className="mb-3 text-lg font-semibold text-gray-900">
+            {hasSourceInfo ? 'Tables' : 'Rows'}
+          </h2>
           <div className="overflow-hidden rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Description</th>
+                  {hasSourceInfo && (
+                    <>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Source</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Destination</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Load Options</th>
+                    </>
+                  )}
+                  {!hasSourceInfo && (
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Description</th>
+                  )}
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {config.rows.map((row) => (
+                {rowsMeta.map(({ row, meta }) => (
                   <tr
                     key={row.id}
                     onClick={() => navigate(`/components/${encodeURIComponent(componentId ?? '')}/${configId}/rows/${row.id}`)}
                     className="cursor-pointer hover:bg-gray-50"
                   >
-                    <td className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800">{row.name || row.id}</td>
-                    <td className="px-4 py-2 text-sm text-gray-500">{row.description || '-'}</td>
+                    <td className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800">
+                      {row.name || row.id}
+                    </td>
+                    {hasSourceInfo && (
+                      <>
+                        <td className="px-4 py-2 text-sm font-mono text-gray-500">{meta.source ?? '-'}</td>
+                        <td className="px-4 py-2 text-sm font-mono text-gray-500">{meta.destination ?? '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-500">
+                          {meta.primaryKey ? (
+                            <span>
+                              <span className="text-xs text-gray-400">PK: </span>
+                              {meta.primaryKey}
+                            </span>
+                          ) : '-'}
+                        </td>
+                      </>
+                    )}
+                    {!hasSourceInfo && (
+                      <td className="px-4 py-2 text-sm text-gray-500">{row.description || '-'}</td>
+                    )}
                     <td className="px-4 py-2">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         row.isDisabled ? 'bg-gray-100 text-gray-400' : 'bg-green-50 text-green-700'
