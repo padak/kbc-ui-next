@@ -148,20 +148,18 @@ function ColumnsWithSamples({ columns, primaryKey, sampleData }: {
   const hasData = sampleData.length > 0;
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200">
+    <div className="rounded-lg border border-gray-200">
+      <table className="w-full table-fixed divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
             <th className="w-10 px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">#</th>
-            <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Column</th>
+            <th className="w-40 px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Column</th>
             <th className="w-10 px-3 py-2 text-center text-xs font-medium uppercase text-gray-500">PK</th>
             {hasData && (
               <>
                 <th className="w-16 px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Distinct</th>
-                <th className="w-16 px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Nulls</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                  Sample Values
-                </th>
+                <th className="w-14 px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Nulls</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Profile</th>
               </>
             )}
           </tr>
@@ -171,10 +169,15 @@ function ColumnsWithSamples({ columns, primaryKey, sampleData }: {
             const values = sampleData.map((row) => row[col]);
             const profile = hasData ? profileColumn(values) : null;
 
+            const sampleText = profile?.samples.join(', ') ?? '';
+            const profileText = profile?.isNumeric && profile.min !== null
+              ? `min: ${profile.min} | max: ${profile.max}${sampleText ? ` | ${sampleText}` : ''}`
+              : sampleText || '-';
+
             return (
               <tr key={col} className="hover:bg-gray-50">
                 <td className="px-3 py-1.5 text-xs text-gray-400">{i + 1}</td>
-                <td className="px-3 py-1.5 font-mono text-sm text-gray-800">{col}</td>
+                <td className="truncate px-3 py-1.5 font-mono text-sm text-gray-800" title={col}>{col}</td>
                 <td className="px-3 py-1.5 text-center">
                   {primaryKey.includes(col) && (
                     <span className="rounded bg-yellow-50 px-1.5 py-0.5 text-[10px] font-medium text-yellow-700">PK</span>
@@ -190,27 +193,11 @@ function ColumnsWithSamples({ columns, primaryKey, sampleData }: {
                         <span className="text-gray-300">0</span>
                       )}
                     </td>
-                    <td className="max-w-md px-3 py-1.5 text-xs text-gray-500">
-                      {profile.isNumeric && profile.min !== null ? (
-                        <span>
-                          <span className="text-gray-400">min:</span> {profile.min}
-                          <span className="mx-1 text-gray-300">|</span>
-                          <span className="text-gray-400">max:</span> {profile.max}
-                          {profile.samples.length > 0 && (
-                            <>
-                              <span className="mx-1 text-gray-300">|</span>
-                              <span className="truncate" title={profile.samples.join(', ')}>
-                                {profile.samples.join(', ')}
-                              </span>
-                            </>
-                          )}
-                        </span>
-                      ) : profile.samples.length > 0 ? (
-                        <span className="truncate" title={profile.samples.join(', ')}>
-                          {profile.samples.join(', ')}
-                        </span>
-                      ) : (
+                    <td className="truncate px-3 py-1.5 text-xs text-gray-500" title={profileText}>
+                      {profileText === '-' ? (
                         <span className="italic text-gray-300">-</span>
+                      ) : (
+                        profileText
                       )}
                     </td>
                   </>
