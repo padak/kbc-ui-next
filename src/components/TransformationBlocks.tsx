@@ -229,10 +229,13 @@ export function extractBlocks(config: Record<string, unknown>): Phase[] {
         const text = disabled
           ? scriptArr.map(enableStatement).join('\n\n')
           : scriptArr.join('\n\n');
+        // Extract embedded output mappings from disabled scripts (for restore on enable)
+        const embeddedMappings = disabled ? decodeOutputMappings(scriptArr) : undefined;
         return {
           name: (code.name as string) ?? 'Unnamed Block',
           script: text,
           disabled,
+          _outputMappingsToRestore: embeddedMappings?.length ? embeddedMappings : undefined,
         };
       });
       const allDisabled = mappedCodes.length > 0 && mappedCodes.every((c) => c.disabled);
@@ -353,14 +356,32 @@ export function splitStatements(text: string): string[] {
 // Disabled blocks have their SQL commented out with a marker — runner sees comments as NOP.
 // Output mappings for disabled blocks are embedded as marker comments and removed from config.
 function applyBlocks(config: Record<string, unknown>, phases: Phase[]): Record<string, unknown> {
-  // Collect all output mappings that should be removed (from disabled blocks)
+  // Collect output mappings to remove (from blocks being disabled)
+  // and to restore (from blocks being re-enabled)
   const mappingsToRemove = new Set<string>();
+  const mappingsToRestore: Array<{ source: string; destination: string }> = [];
+
   for (const phase of phases) {
-    const phaseMappings = phase._outputMappingsToRestore ?? [];
-    phaseMappings.forEach((m) => mappingsToRemove.add(m.source));
     for (const code of phase.codes) {
-      const codeMappings = code._outputMappingsToRestore ?? [];
-      codeMappings.forEach((m) => mappingsToRemove.add(m.source));
+      const savedMappings = code._outputMappingsToRestore ?? [];
+      if (savedMappings.length === 0) continue;
+
+      if (code.disabled) {
+        // Block is disabled — remove its output mappings from config
+        savedMappings.forEach((m) => mappingsToRemove.add(m.source));
+      } else {
+        // Block was re-enabled — restore its output mappings
+        mappingsToRestore.push(...savedMappings);
+      }
+    }
+    // Phase-level mappings (when entire phase is disabled/enabled)
+    const phaseMappings = phase._outputMappingsToRestore ?? [];
+    if (phaseMappings.length > 0) {
+      if (phase.disabled) {
+        phaseMappings.forEach((m) => mappingsToRemove.add(m.source));
+      } else {
+        mappingsToRestore.push(...phaseMappings);
+      }
     }
   }
 
@@ -392,17 +413,33 @@ function applyBlocks(config: Record<string, unknown>, phases: Phase[]): Record<s
     parameters: { ...params, blocks: rawBlocks },
   };
 
-  // Remove disabled output mappings from storage config
-  if (mappingsToRemove.size > 0) {
+  // Modify output mappings: remove disabled, restore re-enabled
+  if (mappingsToRemove.size > 0 || mappingsToRestore.length > 0) {
     const storage = (config.storage ?? {}) as Record<string, unknown>;
     const output = (storage.output ?? {}) as Record<string, unknown>;
-    const currentTables = (output.tables ?? []) as Array<{ source: string; destination: string }>;
-    const filteredTables = currentTables.filter((t) => !mappingsToRemove.has(t.source));
+    let currentTables = (output.tables ?? []) as Array<{ source: string; destination: string }>;
+
+    // Remove mappings from disabled blocks
+    if (mappingsToRemove.size > 0) {
+      currentTables = currentTables.filter((t) => !mappingsToRemove.has(t.source));
+    }
+
+    // Restore mappings from re-enabled blocks (avoid duplicates)
+    if (mappingsToRestore.length > 0) {
+      const existingSources = new Set(currentTables.map((t) => t.source));
+      for (const m of mappingsToRestore) {
+        if (!existingSources.has(m.source)) {
+          currentTables = [...currentTables, m];
+          existingSources.add(m.source);
+        }
+      }
+    }
+
     result = {
       ...result,
       storage: {
         ...storage,
-        output: { ...output, tables: filteredTables },
+        output: { ...output, tables: currentTables },
       },
     };
   }
