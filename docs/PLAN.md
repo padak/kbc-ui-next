@@ -65,9 +65,9 @@ Make the UI read-write. Every listing gets Create/Delete, every detail gets Run/
 - [x] **Create Bucket** - modal with name/stage selector
 - [x] **Jobs with names** - component/config name resolution via useComponentLookup
 - [x] **Rich Flows page** - schedule, last change, last run, status (Scheduler API)
-- [ ] **Edit inline** - click-to-edit on names, descriptions
-- [ ] **Copy Configuration** - duplicate with new name
-- [ ] **Enable/Disable** - toggle on configs and rows
+- [x] **Edit inline** - click-to-edit on names, descriptions (inline EditableText component)
+- [x] **Copy Configuration** - duplicate with new name (POST /configs/{id}/copy + modal)
+- [x] **Enable/Disable** - toggle on configs and rows (isDisabled flag, clickable status badge)
 
 ### Phase 3: Schema-driven config editor (DONE)
 Replace raw JSON with auto-generated forms from component's configurationSchema.

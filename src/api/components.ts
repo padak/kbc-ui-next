@@ -64,9 +64,22 @@ export const componentsApi = {
     );
   },
 
-  updateConfigurationRow(componentId: string, configId: string, rowId: string, data: { configuration?: Record<string, unknown>; changeDescription?: string }) {
+  copyConfiguration(componentId: string, configId: string, newName: string) {
     const body = new URLSearchParams();
+    body.set('name', newName);
+    return fetchApi(`/components/${componentId}/configs/${configId}/copy`, ConfigurationSchema, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+  },
+
+  updateConfigurationRow(componentId: string, configId: string, rowId: string, data: { name?: string; description?: string; configuration?: Record<string, unknown>; isDisabled?: boolean; changeDescription?: string }) {
+    const body = new URLSearchParams();
+    if (data.name !== undefined) body.set('name', data.name);
+    if (data.description !== undefined) body.set('description', data.description);
     if (data.configuration) body.set('configuration', JSON.stringify(data.configuration));
+    if (data.isDisabled !== undefined) body.set('isDisabled', String(data.isDisabled));
     if (data.changeDescription) body.set('changeDescription', data.changeDescription);
     return fetchApi(`/components/${componentId}/configs/${configId}/rows/${rowId}`, ConfigurationRowSchema, {
       method: 'PUT',

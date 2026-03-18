@@ -46,10 +46,21 @@ export function useUpdateConfiguration(componentId: string, configId: string) {
 export function useUpdateConfigurationRow(componentId: string, configId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { rowId: string; configuration?: Record<string, unknown>; changeDescription?: string }) =>
+    mutationFn: (data: { rowId: string; name?: string; description?: string; configuration?: Record<string, unknown>; isDisabled?: boolean; changeDescription?: string }) =>
       componentsApi.updateConfigurationRow(componentId, configId, data.rowId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['components', componentId, 'configs', configId] });
+    },
+  });
+}
+
+export function useCopyConfiguration(componentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { configId: string; newName: string }) =>
+      componentsApi.copyConfiguration(componentId, data.configId, data.newName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['components', componentId, 'configs'] });
     },
   });
 }

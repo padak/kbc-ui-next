@@ -4,7 +4,7 @@
 // Used by: App.tsx route /components/:componentId/:configId.
 // Data from: hooks/useComponents.ts (useConfiguration), hooks/useComponentLookup.ts.
 
-import { useState, memo } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { RunButton } from '@/components/RunButton';
@@ -17,11 +17,54 @@ import { CodeEditor, extractCode } from '@/components/CodeEditor';
 import { TransformationBlocks, hasBlockStructure } from '@/components/TransformationBlocks';
 import { useConfiguration, useComponent } from '@/hooks/useComponents';
 import { useDeleteConfiguration } from '@/hooks/useComponents';
-import { useUpdateConfiguration } from '@/hooks/useMutations';
+import { useUpdateConfiguration, useUpdateConfigurationRow, useCopyConfiguration } from '@/hooks/useMutations';
 import { useComponentLookup } from '@/hooks/useComponentLookup';
 import { flowToMermaid, flowToText } from '@/lib/flowToMermaid';
 import { formatDate } from '@/lib/formatters';
 import type { ConfigurationRow } from '@/api/schemas';
+
+// Inline editable text — click to edit, Enter/blur to save, Escape to cancel
+function EditableText({ value, onSave, placeholder, className }: {
+  value: string;
+  onSave: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  function commit() {
+    const trimmed = draft.trim();
+    if (trimmed !== value) onSave(trimmed);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') { setDraft(value); setEditing(false); }
+        }}
+        className={`rounded border border-blue-400 bg-white px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 ${className ?? ''}`}
+        autoFocus
+      />
+    );
+  }
+
+  return (
+    <span
+      className={`cursor-pointer rounded px-1 hover:bg-gray-100 ${className ?? ''} ${!value && placeholder ? 'italic text-gray-300' : ''}`}
+      onClick={() => { setDraft(value); setEditing(true); }}
+      title="Click to edit"
+    >
+      {value || placeholder || ''}
+    </span>
+  );
+}
 
 // Isolated component to prevent FlowBuilder re-render on copy state change
 const FlowCopyButtons = memo(function FlowCopyButtons({ configuration, lookup }: {
@@ -83,7 +126,43 @@ export function ConfigurationDetailPage() {
   const { data: component } = useComponent(componentId ?? '');
   const deleteConfig = useDeleteConfiguration(componentId ?? '');
   const updateConfig = useUpdateConfiguration(componentId ?? '', configId ?? '');
+  const updateRow = useUpdateConfigurationRow(componentId ?? '', configId ?? '');
+  const copyConfig = useCopyConfiguration(componentId ?? '');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [copyName, setCopyName] = useState('');
+
+  const handleRename = useCallback((name: string) => {
+    updateConfig.mutate({ name, changeDescription: 'Renamed via kbc-ui-next' });
+  }, [updateConfig]);
+
+  const handleDescriptionChange = useCallback((description: string) => {
+    updateConfig.mutate({ description, changeDescription: 'Updated description via kbc-ui-next' });
+  }, [updateConfig]);
+
+  const handleToggleDisable = useCallback(() => {
+    if (!config) return;
+    updateConfig.mutate({
+      isDisabled: !config.isDisabled,
+      changeDescription: config.isDisabled ? 'Enabled via kbc-ui-next' : 'Disabled via kbc-ui-next',
+    });
+  }, [updateConfig, config]);
+
+  const handleToggleRowDisable = useCallback((rowId: string, currentlyDisabled: boolean) => {
+    updateRow.mutate({
+      rowId,
+      isDisabled: !currentlyDisabled,
+      changeDescription: currentlyDisabled ? 'Enabled row via kbc-ui-next' : 'Disabled row via kbc-ui-next',
+    });
+  }, [updateRow]);
+
+  const handleCopy = useCallback(async () => {
+    if (!copyName.trim()) return;
+    const result = await copyConfig.mutateAsync({ configId: configId ?? '', newName: copyName.trim() });
+    setShowCopyModal(false);
+    setCopyName('');
+    navigate(`/components/${encodeURIComponent(componentId ?? '')}/${result.id}`);
+  }, [copyConfig, configId, copyName, componentId, navigate]);
   const { getComponentName, getComponentIcon, getConfigName } = useComponentLookup();
 
   const isFlow = componentId === 'keboola.orchestrator' || componentId === 'keboola.flow';
@@ -106,11 +185,40 @@ export function ConfigurationDetailPage() {
   return (
     <div>
       <PageHeader
-        title={config.name}
-        description={config.description || `Version ${config.version}`}
+        title={
+          <EditableText
+            value={config.name}
+            onSave={handleRename}
+            className="text-xl font-bold text-gray-900 md:text-2xl"
+          />
+        }
+        description={
+          <EditableText
+            value={config.description}
+            onSave={handleDescriptionChange}
+            placeholder="Add description..."
+            className="text-sm text-gray-500"
+          />
+        }
         actions={
           <div className="flex items-center gap-2">
             <RunButton componentId={componentId ?? ''} configId={configId ?? ''} label="Run Component" />
+            <button
+              onClick={handleToggleDisable}
+              className={`rounded-md border px-3 py-1.5 text-sm ${
+                config.isDisabled
+                  ? 'border-green-300 text-green-600 hover:bg-green-50'
+                  : 'border-orange-300 text-orange-600 hover:bg-orange-50'
+              }`}
+            >
+              {config.isDisabled ? 'Enable' : 'Disable'}
+            </button>
+            <button
+              onClick={() => { setCopyName(`Copy of ${config.name}`); setShowCopyModal(true); }}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              Copy
+            </button>
             <button
               onClick={() => navigate(`/components/${encodeURIComponent(componentId ?? '')}`)}
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
@@ -270,11 +378,16 @@ export function ConfigurationDetailPage() {
                       <td className="px-4 py-2 text-sm text-gray-500">{row.description || '-'}</td>
                     )}
                     <td className="px-4 py-2">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        row.isDisabled ? 'bg-gray-100 text-gray-400' : 'bg-green-50 text-green-700'
-                      }`}>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleToggleRowDisable(row.id, row.isDisabled); }}
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+                          row.isDisabled ? 'bg-gray-100 text-gray-400 hover:bg-green-50 hover:text-green-700' : 'bg-green-50 text-green-700 hover:bg-orange-50 hover:text-orange-600'
+                        }`}
+                        title={row.isDisabled ? 'Click to enable' : 'Click to disable'}
+                      >
                         {row.isDisabled ? 'Disabled' : 'Active'}
-                      </span>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -311,6 +424,43 @@ export function ConfigurationDetailPage() {
         isPending={deleteConfig.isPending}
         error={deleteConfig.error instanceof Error ? deleteConfig.error : null}
       />
+
+      {/* Copy Configuration Modal */}
+      {showCopyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40">
+          <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-lg">
+            <h3 className="mb-4 text-lg font-semibold text-gray-900">Copy Configuration</h3>
+            <label className="mb-1 block text-sm font-medium text-gray-600">New name</label>
+            <input
+              value={copyName}
+              onChange={(e) => setCopyName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCopy(); }}
+              className="mb-4 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCopyModal(false)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCopy}
+                disabled={!copyName.trim() || copyConfig.isPending}
+                className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:bg-gray-300"
+              >
+                {copyConfig.isPending ? 'Copying...' : 'Copy'}
+              </button>
+            </div>
+            {copyConfig.error instanceof Error && (
+              <p className="mt-3 text-sm text-red-600">{copyConfig.error.message}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
