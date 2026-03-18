@@ -4,7 +4,7 @@
 // Used by: ConfigurationDetailPage for transformation components.
 // Disable works by moving script to _savedScript and setting script to [].
 
-import { useState, useCallback, lazy, Suspense } from 'react';
+import { useState, useCallback, useMemo, lazy, Suspense } from 'react';
 
 const SqlEditor = lazy(() => import('@/components/SqlEditor').then((m) => ({ default: m.SqlEditor })));
 
@@ -29,30 +29,43 @@ type CodeBlock = {
   name: string;
   script: string;
   disabled: boolean;
+  _outputMappingsToRestore?: Array<{ source: string; destination: string }>;
 };
 
 type Phase = {
   name: string;
   codes: CodeBlock[];
   disabled: boolean;
+  _outputMappingsToRestore?: Array<{ source: string; destination: string }>;
 };
 
 // -- Disable helpers: comment/uncomment SQL with marker --
 
-// Comment out a single SQL statement, preserving content as comments
-export function disableStatement(stmt: string): string {
+// Comment out a single SQL statement, preserving content as comments.
+// Optionally embed output mapping data for restoration on enable.
+export function disableStatement(
+  stmt: string,
+  outputMappings?: Array<{ source: string; destination: string }>,
+): string {
   const lines = stmt.split('\n');
   const commented = lines.map((line) => `-- ${line}`);
-  return [DISABLED_MARKER, ...commented].join('\n');
+  const parts = [DISABLED_MARKER, ...commented];
+  if (outputMappings && outputMappings.length > 0) {
+    parts.push(...encodeOutputMappings(outputMappings));
+  }
+  return parts.join('\n');
 }
 
-// Restore a disabled statement by stripping marker and comment prefixes
+// Restore a disabled statement by stripping marker, output mapping markers, and comment prefixes
 export function enableStatement(stmt: string): string {
   const lines = stmt.split('\n');
-  // Remove marker line
-  const withoutMarker = lines.filter((line) => line.trim() !== DISABLED_MARKER.trim());
+  // Remove marker line and output mapping lines
+  const codeLines = lines.filter((line) => {
+    const trimmed = line.trim();
+    return trimmed !== DISABLED_MARKER.trim() && !trimmed.startsWith(OUTPUT_MAPPING_MARKER.trim());
+  });
   // Remove "-- " prefix from each line
-  const uncommented = withoutMarker.map((line) => {
+  const uncommented = codeLines.map((line) => {
     if (line.startsWith('-- ')) return line.slice(3);
     if (line === '--') return '';
     return line;
@@ -69,6 +82,133 @@ export function isStatementDisabled(stmt: string): boolean {
 function isCodeDisabled(script: unknown): boolean {
   if (!Array.isArray(script) || script.length === 0) return false;
   return script.every((s) => typeof s === 'string' && isStatementDisabled(s));
+}
+
+// -- Output mapping markers in disabled scripts --
+// When disabling a block, we store its related output mappings as special comments
+// so we can restore them on re-enable. Format:
+// -- [KBC-UI-OUTPUT] {"source":"out1","destination":"out.c-bucket.out1"}
+
+const OUTPUT_MAPPING_MARKER = '-- [KBC-UI-OUTPUT] ';
+
+export function encodeOutputMappings(mappings: Array<{ source: string; destination: string }>): string[] {
+  return mappings.map((m) => `${OUTPUT_MAPPING_MARKER}${JSON.stringify(m)}`);
+}
+
+export function decodeOutputMappings(script: string[]): Array<{ source: string; destination: string }> {
+  const results: Array<{ source: string; destination: string }> = [];
+  for (const line of script) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(OUTPUT_MAPPING_MARKER.trim())) {
+      try {
+        const json = trimmed.slice(OUTPUT_MAPPING_MARKER.trim().length);
+        results.push(JSON.parse(json));
+      } catch { /* skip malformed */ }
+    }
+  }
+  return results;
+}
+
+// -- Dependency analysis --
+
+// Extract table names created by SQL (CREATE TABLE "name")
+const CREATE_TABLE_RE = /CREATE\s+(?:OR\s+REPLACE\s+)?(?:TEMPORARY\s+|TEMP\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"([^"]+)"|([a-zA-Z_]\w*))/gi;
+
+export function extractCreatedTablesFromSql(sql: string): string[] {
+  const tables = new Set<string>();
+  let match: RegExpExecArray | null;
+  const re = new RegExp(CREATE_TABLE_RE.source, CREATE_TABLE_RE.flags);
+  while ((match = re.exec(sql)) !== null) {
+    const name = match[1] ?? match[2];
+    if (name) tables.add(name);
+  }
+  return [...tables];
+}
+
+// Extract table names read by SQL (FROM "name" / JOIN "name")
+const FROM_TABLE_RE = /(?:FROM|JOIN)\s+(?:"([^"]+)"|([a-zA-Z_]\w*))/gi;
+
+export function extractReadTablesFromSql(sql: string): string[] {
+  const tables = new Set<string>();
+  let match: RegExpExecArray | null;
+  const re = new RegExp(FROM_TABLE_RE.source, FROM_TABLE_RE.flags);
+  while ((match = re.exec(sql)) !== null) {
+    const name = match[1] ?? match[2];
+    if (name) tables.add(name);
+  }
+  return [...tables];
+}
+
+// Analyze impact of disabling a code block
+export type DisableImpact = {
+  createdTables: string[];
+  dependentBlocks: Array<{ phaseName: string; codeName: string; readsTable: string }>;
+  affectedOutputMappings: Array<{ source: string; destination: string }>;
+};
+
+export function analyzeDisableImpact(
+  phases: Phase[],
+  phaseIdx: number,
+  codeIdx: number,
+  outputMappings: Array<{ source: string; destination: string }>,
+): DisableImpact {
+  const block = phases[phaseIdx]?.codes[codeIdx];
+  if (!block) return { createdTables: [], dependentBlocks: [], affectedOutputMappings: [] };
+
+  const createdTables = extractCreatedTablesFromSql(block.script);
+  const createdSet = new Set(createdTables);
+
+  // Find blocks that read from these tables
+  const dependentBlocks: DisableImpact['dependentBlocks'] = [];
+  for (let pi = 0; pi < phases.length; pi++) {
+    const phaseObj = phases[pi]!;
+    for (let ci = 0; ci < phaseObj.codes.length; ci++) {
+      if (pi === phaseIdx && ci === codeIdx) continue; // skip self
+      const other = phaseObj.codes[ci]!;
+      if (other.disabled) continue;
+      const reads = extractReadTablesFromSql(other.script);
+      for (const t of reads) {
+        if (createdSet.has(t)) {
+          dependentBlocks.push({ phaseName: phaseObj.name, codeName: other.name, readsTable: t });
+        }
+      }
+    }
+  }
+
+  // Find output mappings whose source matches created tables
+  const affectedOutputMappings = outputMappings.filter((m) => createdSet.has(m.source));
+
+  return { createdTables, dependentBlocks, affectedOutputMappings };
+}
+
+// Analyze impact of disabling an entire phase
+export function analyzePhaseDisableImpact(
+  phases: Phase[],
+  phaseIdx: number,
+  outputMappings: Array<{ source: string; destination: string }>,
+): DisableImpact {
+  const phase = phases[phaseIdx];
+  if (!phase) return { createdTables: [], dependentBlocks: [], affectedOutputMappings: [] };
+
+  // Combine impact of all codes in the phase
+  const allCreated = new Set<string>();
+  const allDeps: DisableImpact['dependentBlocks'] = [];
+  const allMappings: DisableImpact['affectedOutputMappings'] = [];
+
+  for (let ci = 0; ci < phase.codes.length; ci++) {
+    if (phase.codes[ci]!.disabled) continue;
+    const impact = analyzeDisableImpact(phases, phaseIdx, ci, outputMappings);
+    impact.createdTables.forEach((t) => allCreated.add(t));
+    // Filter deps to only external blocks (not within the same phase)
+    allDeps.push(...impact.dependentBlocks.filter((d) => d.phaseName !== phase.name));
+    allMappings.push(...impact.affectedOutputMappings);
+  }
+
+  return {
+    createdTables: [...allCreated],
+    dependentBlocks: allDeps,
+    affectedOutputMappings: [...new Map(allMappings.map((m) => [m.source, m])).values()],
+  };
 }
 
 // -- Pure helpers (exported for testing) --
@@ -211,24 +351,63 @@ export function splitStatements(text: string): string[] {
 // IMPORTANT: script[] is an array where each element = one SQL statement.
 // Runner executes each separately. We must split by ";" respecting quotes/comments.
 // Disabled blocks have their SQL commented out with a marker — runner sees comments as NOP.
+// Output mappings for disabled blocks are embedded as marker comments and removed from config.
 function applyBlocks(config: Record<string, unknown>, phases: Phase[]): Record<string, unknown> {
+  // Collect all output mappings that should be removed (from disabled blocks)
+  const mappingsToRemove = new Set<string>();
+  for (const phase of phases) {
+    const phaseMappings = phase._outputMappingsToRestore ?? [];
+    phaseMappings.forEach((m) => mappingsToRemove.add(m.source));
+    for (const code of phase.codes) {
+      const codeMappings = code._outputMappingsToRestore ?? [];
+      codeMappings.forEach((m) => mappingsToRemove.add(m.source));
+    }
+  }
+
   const rawBlocks: RawBlock[] = phases.map((phase) => ({
     name: phase.name,
     codes: phase.codes.map((code): RawCode => {
       const scriptArray = splitStatements(code.script);
       if (code.disabled) {
-        // Comment out each statement with our marker — runner skips comments
-        return { name: code.name, script: scriptArray.map(disableStatement) };
+        // Collect output mappings to embed in the disabled comment
+        const embeddedMappings = [
+          ...(code._outputMappingsToRestore ?? []),
+          ...(phase._outputMappingsToRestore ?? []),
+        ];
+        // Comment out each statement, embedding output mapping info in the first one
+        return {
+          name: code.name,
+          script: scriptArray.map((stmt, i) =>
+            disableStatement(stmt, i === 0 ? embeddedMappings : undefined),
+          ),
+        };
       }
       return { name: code.name, script: scriptArray };
     }),
   }));
 
   const params = (config.parameters ?? {}) as Record<string, unknown>;
-  return {
+  let result: Record<string, unknown> = {
     ...config,
     parameters: { ...params, blocks: rawBlocks },
   };
+
+  // Remove disabled output mappings from storage config
+  if (mappingsToRemove.size > 0) {
+    const storage = (config.storage ?? {}) as Record<string, unknown>;
+    const output = (storage.output ?? {}) as Record<string, unknown>;
+    const currentTables = (output.tables ?? []) as Array<{ source: string; destination: string }>;
+    const filteredTables = currentTables.filter((t) => !mappingsToRemove.has(t.source));
+    result = {
+      ...result,
+      storage: {
+        ...storage,
+        output: { ...output, tables: filteredTables },
+      },
+    };
+  }
+
+  return result;
 }
 
 // -- Chevron icon --
@@ -455,12 +634,16 @@ function PhaseSection({
   onUpdate,
   onDelete,
   configuration,
+  onRequestDisableCode,
+  onRequestDisablePhase,
 }: {
   phase: Phase;
   defaultOpen: boolean;
   onUpdate: (phase: Phase) => void;
   configuration?: Record<string, unknown>;
   onDelete: () => void;
+  onRequestDisableCode?: (codeIdx: number) => void;
+  onRequestDisablePhase?: () => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const blockCount = phase.codes.length;
@@ -485,12 +668,22 @@ function PhaseSection({
   }
 
   function togglePhaseDisable() {
-    const newDisabled = !phase.disabled;
-    onUpdate({
-      ...phase,
-      disabled: newDisabled,
-      codes: phase.codes.map((c) => ({ ...c, disabled: newDisabled })),
-    });
+    if (phase.disabled) {
+      // Enable — direct, no confirmation
+      onUpdate({
+        ...phase,
+        disabled: false,
+        codes: phase.codes.map((c) => ({ ...c, disabled: false })),
+      });
+    } else if (onRequestDisablePhase) {
+      onRequestDisablePhase();
+    } else {
+      onUpdate({
+        ...phase,
+        disabled: true,
+        codes: phase.codes.map((c) => ({ ...c, disabled: true })),
+      });
+    }
   }
 
   return (
@@ -558,13 +751,129 @@ function PhaseSection({
               block={block}
               onEdit={(script) => updateCode(i, { script })}
               onDelete={() => deleteCode(i)}
-              onToggleDisable={() => updateCode(i, { disabled: !block.disabled })}
+              onToggleDisable={() => {
+                if (block.disabled) {
+                  // Enable is always direct (no confirmation needed)
+                  updateCode(i, { disabled: false });
+                } else if (onRequestDisableCode) {
+                  onRequestDisableCode(i);
+                } else {
+                  updateCode(i, { disabled: true });
+                }
+              }}
               onRename={(name) => updateCode(i, { name })}
               configuration={configuration}
             />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// -- Main component --
+
+// -- Disable confirmation modal --
+
+type DisableModalState = {
+  type: 'code' | 'phase';
+  phaseIdx: number;
+  codeIdx?: number;
+  impact: DisableImpact;
+} | null;
+
+function DisableConfirmModal({
+  state,
+  onConfirm,
+  onCancel,
+}: {
+  state: DisableModalState;
+  onConfirm: (disableOutputMappings: boolean) => void;
+  onCancel: () => void;
+}) {
+  const [disableMappings, setDisableMappings] = useState(true);
+
+  if (!state) return null;
+  const { impact } = state;
+  const hasImpact = impact.createdTables.length > 0 || impact.dependentBlocks.length > 0 || impact.affectedOutputMappings.length > 0;
+
+  if (!hasImpact) {
+    // No impact — just confirm quickly
+    onConfirm(false);
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40">
+      <div className="w-full max-w-lg rounded-lg border border-neutral-200 bg-white p-6 shadow-dialog">
+        <h3 className="mb-3 text-lg font-semibold text-neutral-900">Disable Impact</h3>
+
+        {impact.createdTables.length > 0 && (
+          <div className="mb-3">
+            <p className="text-sm text-neutral-600">Tables that will <strong>not be created</strong>:</p>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {impact.createdTables.map((t) => (
+                <span key={t} className="rounded bg-orange-100 px-2 py-0.5 font-mono text-xs text-orange-700">{t}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {impact.dependentBlocks.length > 0 && (
+          <div className="mb-3">
+            <p className="text-sm text-neutral-600">Blocks that <strong>read from these tables</strong> (will fail):</p>
+            <ul className="mt-1 list-inside list-disc text-sm text-red-600">
+              {impact.dependentBlocks.map((d, i) => (
+                <li key={i}>
+                  <span className="font-medium">{d.codeName}</span>
+                  <span className="text-neutral-400"> in {d.phaseName}</span>
+                  <span className="text-neutral-400"> reads </span>
+                  <code className="text-xs">{d.readsTable}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {impact.affectedOutputMappings.length > 0 && (
+          <div className="mb-4">
+            <p className="text-sm text-neutral-600">Output mappings that will <strong>fail</strong> (source table missing):</p>
+            <ul className="mt-1 space-y-0.5">
+              {impact.affectedOutputMappings.map((m) => (
+                <li key={m.source} className="font-mono text-xs text-neutral-700">
+                  {m.source} &rarr; {m.destination}
+                </li>
+              ))}
+            </ul>
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={disableMappings}
+                onChange={(e) => setDisableMappings(e.target.checked)}
+                className="rounded border-neutral-300"
+              />
+              <span>Also remove these output mappings (stored in code for re-enable)</span>
+            </label>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-md border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(disableMappings)}
+            className="rounded-md bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600"
+          >
+            Disable
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -581,12 +890,20 @@ type TransformationBlocksProps = {
 export function TransformationBlocks({ configuration, language: _language, onSave, isSaving }: TransformationBlocksProps) {
   const originalPhases = extractBlocks(configuration);
   const [pendingPhases, setPendingPhases] = useState<Phase[] | null>(null);
+  const [disableModal, setDisableModal] = useState<DisableModalState>(null);
 
   const phases = pendingPhases ?? originalPhases;
   const hasChanges = pendingPhases !== null;
 
   const totalBlocks = phases.reduce((sum, p) => sum + p.codes.length, 0);
   const disabledBlocks = phases.reduce((sum, p) => sum + p.codes.filter((c) => c.disabled).length, 0);
+
+  // Get current output mappings from configuration
+  const outputMappings = useMemo(() => {
+    const storage = configuration?.storage as Record<string, unknown> | undefined;
+    const output = storage?.output as Record<string, unknown> | undefined;
+    return (output?.tables as Array<{ source: string; destination: string }>) ?? [];
+  }, [configuration]);
 
   const updatePhase = useCallback((index: number, phase: Phase) => {
     const next = [...(pendingPhases ?? originalPhases)];
@@ -599,6 +916,63 @@ export function TransformationBlocks({ configuration, language: _language, onSav
     next.splice(index, 1);
     setPendingPhases(next);
   }, [pendingPhases, originalPhases]);
+
+  // Smart disable: show impact modal, then disable with output mapping handling
+  const requestDisableCode = useCallback((phaseIdx: number, codeIdx: number) => {
+    const impact = analyzeDisableImpact(phases, phaseIdx, codeIdx, outputMappings);
+    if (impact.createdTables.length === 0 && impact.affectedOutputMappings.length === 0) {
+      const next = [...phases];
+      const phase = next[phaseIdx]!;
+      const phaseCopy = { ...phase, codes: [...phase.codes] };
+      phaseCopy.codes[codeIdx] = { ...phaseCopy.codes[codeIdx]!, disabled: true };
+      phaseCopy.disabled = phaseCopy.codes.every((c) => c.disabled);
+      next[phaseIdx] = phaseCopy;
+      setPendingPhases(next);
+    } else {
+      setDisableModal({ type: 'code', phaseIdx, codeIdx, impact });
+    }
+  }, [phases, outputMappings]);
+
+  const requestDisablePhase = useCallback((phaseIdx: number) => {
+    const impact = analyzePhaseDisableImpact(phases, phaseIdx, outputMappings);
+    if (impact.createdTables.length === 0 && impact.affectedOutputMappings.length === 0) {
+      const next = [...phases];
+      const phase = next[phaseIdx]!;
+      next[phaseIdx] = { ...phase, disabled: true, codes: phase.codes.map((c) => ({ ...c, disabled: true })) };
+      setPendingPhases(next);
+    } else {
+      setDisableModal({ type: 'phase', phaseIdx, impact });
+    }
+  }, [phases, outputMappings]);
+
+  function handleDisableConfirm(disableOutputMappings: boolean) {
+    if (!disableModal) return;
+    const next = [...phases];
+    const pi = disableModal.phaseIdx;
+    const phase = next[pi]!;
+
+    if (disableModal.type === 'code' && disableModal.codeIdx !== undefined) {
+      const ci = disableModal.codeIdx;
+      const phaseCopy = { ...phase, codes: [...phase.codes] };
+      phaseCopy.codes[ci] = {
+        ...phaseCopy.codes[ci]!,
+        disabled: true,
+        _outputMappingsToRestore: disableOutputMappings ? disableModal.impact.affectedOutputMappings : undefined,
+      };
+      phaseCopy.disabled = phaseCopy.codes.every((c) => c.disabled);
+      next[pi] = phaseCopy;
+    } else if (disableModal.type === 'phase') {
+      next[pi] = {
+        ...phase,
+        disabled: true,
+        codes: phase.codes.map((c) => ({ ...c, disabled: true })),
+        _outputMappingsToRestore: disableOutputMappings ? disableModal.impact.affectedOutputMappings : undefined,
+      };
+    }
+
+    setPendingPhases(next);
+    setDisableModal(null);
+  }
 
   function addPhase() {
     const next = [...phases, { name: `Phase ${phases.length + 1}`, codes: [], disabled: false }];
@@ -689,9 +1063,18 @@ export function TransformationBlocks({ configuration, language: _language, onSav
             onUpdate={(p) => updatePhase(i, p)}
             onDelete={() => deletePhase(i)}
             configuration={configuration}
+            onRequestDisableCode={(codeIdx) => requestDisableCode(i, codeIdx)}
+            onRequestDisablePhase={() => requestDisablePhase(i)}
           />
         ))}
       </div>
+
+      {/* Disable impact confirmation modal */}
+      <DisableConfirmModal
+        state={disableModal}
+        onConfirm={handleDisableConfirm}
+        onCancel={() => setDisableModal(null)}
+      />
     </div>
   );
 }
