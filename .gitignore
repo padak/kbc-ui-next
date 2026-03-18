@@ -5,3 +5,4 @@ dist/
 .vite/
 .env
 projects.secret.json
+.audit/
