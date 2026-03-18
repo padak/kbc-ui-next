@@ -78,7 +78,7 @@ Replace raw JSON with auto-generated forms from component's configurationSchema.
 - [x] **Save mutations** - updateConfiguration + updateConfigurationRow via API
 - [x] **24 tests** - SchemaForm (15) + ConfigEditor (9)
 - [x] **Input/Output mapping editor** - collapsible mapping with add/remove, output suggestions from CREATE TABLE
-- [ ] **Credentials section** - DB connection form (host, port, user, password)
+- [x] **Credentials section** - handled generically by SchemaForm (password format fields)
 
 ### Phase 4: Multi-project (DONE - core)
 The killer differentiator. Connect multiple projects, search across them.
