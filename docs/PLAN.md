@@ -130,49 +130,34 @@ Instead of drag-and-drop, use prompt-driven flow editing:
 - User confirms -> save
 - See `flowToMermaid()` and `flowToText()` in `src/lib/flowToMermaid.ts`
 
-### Phase 5b: Design System & Visual Polish (IN PROGRESS)
-Apply Keboola Product Design System from Figma to all existing pages and components.
+### Phase 5b: Design System & Visual Polish (DONE - foundation + CSS remap)
+Apply Keboola Product Design System from Figma. Toggle on/off via `data-theme="keboola"`.
+
+**Approach**: CSS-first remap under `[data-theme="keboola"]`, not standalone component library. All existing Tailwind classes (bg-gray-*, text-blue-*, etc.) automatically pick up Keboola tokens when theme is active. No code changes needed — pure CSS override.
 
 **Foundation** (done):
-- [x] **Design tokens extracted** - Figma file `VVjvQJQTMcFPDkWqB0Bf39TD` → `src/config/design-tokens.ts`
-- [x] **Tailwind v4 theme** - all tokens registered in `src/styles/globals.css` via `@theme`
-- [x] **Color palettes** - 10 palettes (neutral, green, red, orange, blue, purple, cyan, teal, yellow, pink) with shades 100–900
-- [x] **Typography tokens** - Inter font, H1–H3, Body, Body Medium, Button styles
-- [x] **Shadows & radii** - card/dialog shadows, sm/md/lg/xl border radius
+- [x] **Design tokens** - Figma → `src/config/design-tokens.ts` + `src/styles/globals.css` @theme
+- [x] **Color palettes** - 10 palettes with shades 100–900, all registered in Tailwind
+- [x] **Typography** - Inter font, H1–H3 weights, antialiased rendering
+- [x] **Theme toggle** - `ThemeToggle` component + Zustand store, persists to localStorage
 
-**Component library** (mapped from Figma component sets):
-- [ ] **Button** - Primary (green), Secondary, Danger, Invisible Icon; sizes sm/md/lg; states default/hover/focus/pressed/disabled/loading
-- [ ] **Text Input** - with labels, validation states, helper text
-- [ ] **Text Area** - multiline input variant
-- [ ] **Select** - dropdown with search, single/multi select
-- [ ] **Checkbox / Radio** - with labels and group layout
-- [ ] **Switch / Toggle** - on/off with label
-- [ ] **Badge / Tag** - status indicators, input tags, beta tags
-- [ ] **Toast Notification** - success/error/warning/info with auto-dismiss
-- [ ] **Modal / Popover** - sizes 480/640/900/fullscreen, overlay
-- [ ] **Tooltip** - positioned tooltips
-- [ ] **Tab** - tab bar navigation
-- [ ] **Table** - header, rows, card shadow, sorting indicators
-- [ ] **Banner** - page-level info/warning/error banners
-- [ ] **Dropdown** - menu items with hover/disabled/divider states
-- [ ] **Link** - inline links with hover states
-- [ ] **Loader / Skeleton** - loading states, skeleton placeholders
-- [ ] **Search Bar** - search input with filter tags
-- [ ] **Info Bar** - contextual information panel
-- [ ] **Code Block** - syntax-highlighted code display
-- [ ] **Navigation** - sidebar, header, breadcrumbs
-- [ ] **Scrollbar** - custom styled scrollbar
+**CSS remap** (done — covers all pages automatically):
+- [x] **Gray → Neutral** - all bg-gray-*, text-gray-*, border-gray-* remapped to cooler neutral palette
+- [x] **Layout shell** - sidebar active state (green accent), neutral borders, warm bg
+- [x] **Tables** - 11px uppercase headers, subtle dividers, hover rows
+- [x] **Buttons** - green primary with shadow + hover lift, danger red, ghost borders
+- [x] **Badges** - status colors mapped (green/red/orange/blue/purple)
+- [x] **Links** - blue-600 with hover darkening
+- [x] **Focus rings** - green-500 outline
+- [x] **Scrollbars** - thin 6px with neutral thumb
+- [x] **Transitions** - 150ms ease on all interactive elements
 
-**Page reskinning** (apply tokens + components to existing pages):
-- [ ] **Layout shell** - sidebar, header, page background
-- [ ] **Storage page** - bucket/table listing, filters, detail panels
-- [ ] **Components page** - component cards/list, config listing
-- [ ] **Jobs page** - job list, status badges, job detail
-- [ ] **Flows page** - flow list, flow builder canvas
-- [ ] **Settings page** - token info, permissions
-- [ ] **Setup page** - org discovery, project selection wizard
-- [ ] **Config editor** - form/JSON tabs, save bar
-- [ ] **Command palette** - Cmd+K modal styling
+**Remaining polish** (per-page fine-tuning, do as needed):
+- [ ] **Toast notifications** - success/error/warning with auto-dismiss (need component)
+- [ ] **Skeleton loading** - placeholder shimmer for async content
+- [ ] **Tooltip component** - positioned tooltips (currently using title attr)
+- [ ] **Connect page** - login form styling
+- [ ] **Command palette** - modal backdrop + styling refinement
 
 ### Phase 6: Remaining features
 Everything else from the legacy UI.
