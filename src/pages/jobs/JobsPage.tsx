@@ -13,6 +13,7 @@ import { useComponentLookup } from '@/hooks/useComponentLookup';
 import { useConnectionStore } from '@/stores/connection';
 import { formatRelativeTime } from '@/lib/formatters';
 import { ROUTES } from '@/lib/constants';
+import { calculateJobCredits, formatCredits, getContainerSize } from '@/config/credits';
 import type { Job } from '@/api/schemas';
 
 const STATUS_FILTERS = ['all', 'processing', 'success', 'error', 'waiting', 'terminated', 'cancelled'] as const;
@@ -47,11 +48,13 @@ export function JobsPage() {
   });
   const { getComponentName, getComponentType, getComponentIcon, getConfigName } = useComponentLookup();
 
+  const totalCredits = (jobs ?? []).reduce((sum, j) => sum + calculateJobCredits(j.durationSeconds, getContainerSize((j as Record<string, unknown>).metrics)), 0);
+
   return (
     <div>
       <PageHeader
         title="Jobs"
-        description="Job execution history"
+        description={`Job execution history${totalCredits > 0 ? ` \u00B7 ${formatCredits(totalCredits)} credits (shown jobs)` : ''}`}
         actions={
           isMultiProject ? (
             <Link
@@ -94,6 +97,7 @@ export function JobsPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Component</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Configuration</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Duration</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Credits</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Created</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
               </tr>
@@ -101,7 +105,7 @@ export function JobsPage() {
             <tbody className="divide-y divide-gray-200 bg-white">
               {!jobs?.length ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">
                     No jobs found
                   </td>
                 </tr>
@@ -137,6 +141,9 @@ export function JobsPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                         {formatDuration(job.durationSeconds)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-mono text-gray-600">
+                        {formatCredits(calculateJobCredits(job.durationSeconds, getContainerSize((job as Record<string, unknown>).metrics)))}
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-sm text-gray-600">{formatRelativeTime(job.createdTime)}</p>
