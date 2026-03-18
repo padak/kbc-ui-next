@@ -77,7 +77,7 @@ Replace raw JSON with auto-generated forms from component's configurationSchema.
 - [x] **Row editor page** - SchemaForm for row parameters (configurationRowSchema)
 - [x] **Save mutations** - updateConfiguration + updateConfigurationRow via API
 - [x] **24 tests** - SchemaForm (15) + ConfigEditor (9)
-- [ ] **Input/Output mapping editor** - table picker + mapping UI
+- [x] **Input/Output mapping editor** - collapsible mapping with add/remove, output suggestions from CREATE TABLE
 - [ ] **Credentials section** - DB connection form (host, port, user, password)
 
 ### Phase 4: Multi-project (DONE - core)
@@ -118,7 +118,9 @@ The two complex UIs that need custom implementation.
 - [x] **Flow editing** - add/remove phases and tasks via FlowEditor
 - [x] **I/O Mapping editor** - input/output table mapping for transformations
 - [x] **flowToMermaid** - export flow as Mermaid/text for AI context
-- [ ] **CodeMirror/Monaco** - syntax highlighting upgrade for SQL/Python
+- [x] **CodeMirror 6** - SQL syntax highlighting, table/column autocomplete, one-dark theme
+- [x] **Phase/Block editor** - add/remove/rename/disable phases and blocks, impact analysis
+- [x] **Block disable** - comment-based disable with output mapping handling (see business-logic-audit.md)
 - [ ] **Query results viewer** - tabular results display
 
 ### Future: AI-driven flow orchestration
