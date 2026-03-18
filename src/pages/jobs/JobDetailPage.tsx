@@ -4,6 +4,7 @@
 // Used by: App.tsx route /jobs/:jobId.
 // Data from: hooks/useJobs.ts (useJob).
 
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -131,11 +132,157 @@ export function JobDetailPage() {
         />
       </div>
 
-      {/* Raw result JSON */}
-      <h2 className="mb-3 text-lg font-semibold text-gray-900">Result</h2>
-      <pre className="overflow-x-auto rounded-lg border border-gray-200 bg-gray-900 p-4 text-sm text-green-400">
-        {JSON.stringify(job.result, null, 2)}
-      </pre>
+      {/* Result — structured view */}
+      <JobResult result={job.result as Record<string, unknown> | null} />
+    </div>
+  );
+}
+
+// -- Structured job result viewer --
+
+function JobResult({ result }: { result: Record<string, unknown> | null }) {
+  const [showRaw, setShowRaw] = useState(false);
+
+  if (!result || Object.keys(result).length === 0) {
+    return (
+      <div className="mb-6 rounded-lg border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-400">
+        No result data.
+      </div>
+    );
+  }
+
+  const message = result.message as string | undefined;
+  const configVersion = result.configVersion as string | undefined;
+
+  // Output tables
+  const output = result.output as Record<string, unknown> | undefined;
+  const outputTables = (output?.tables as Array<Record<string, unknown>>) ?? [];
+
+  // Input tables
+  const input = result.input as Record<string, unknown> | undefined;
+  const inputTables = (input?.tables as Array<Record<string, unknown>>) ?? [];
+
+  // Images
+  const images = (result.images as Array<Record<string, unknown>>) ?? [];
+
+  return (
+    <div className="mb-6">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900">Result</h2>
+        <button
+          type="button"
+          onClick={() => setShowRaw(!showRaw)}
+          className="rounded border border-gray-300 px-2 py-1 text-[10px] text-gray-500 hover:bg-gray-50 transition-colors"
+        >
+          {showRaw ? 'Structured' : 'Raw JSON'}
+        </button>
+      </div>
+
+      {showRaw ? (
+        <pre className="overflow-x-auto rounded-lg border border-gray-200 bg-gray-900 p-4 text-sm text-green-400 max-h-[500px]">
+          {JSON.stringify(result, null, 2)}
+        </pre>
+      ) : (
+        <div className="space-y-3">
+          {/* Message + version */}
+          {(message || configVersion) && (
+            <div className="rounded-lg border border-gray-200 bg-white px-4 py-3">
+              {message && <p className="text-sm text-gray-800">{message}</p>}
+              {configVersion && (
+                <p className="mt-1 text-xs text-gray-400">Config version: {configVersion}</p>
+              )}
+            </div>
+          )}
+
+          {/* Output tables */}
+          {outputTables.length > 0 && (
+            <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+              <div className="border-b border-gray-100 bg-gray-50 px-4 py-2">
+                <h3 className="text-xs font-semibold uppercase text-gray-500">
+                  Output Tables
+                  <span className="ml-2 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-600 normal-case">{outputTables.length}</span>
+                </h3>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {outputTables.map((table, i) => (
+                  <TableResultRow key={i} table={table} stage="out" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Input tables */}
+          {inputTables.length > 0 && (
+            <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+              <div className="border-b border-gray-100 bg-gray-50 px-4 py-2">
+                <h3 className="text-xs font-semibold uppercase text-gray-500">
+                  Input Tables
+                  <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600 normal-case">{inputTables.length}</span>
+                </h3>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {inputTables.map((table, i) => (
+                  <TableResultRow key={i} table={table} stage="in" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Images */}
+          {images.length > 0 && (
+            <div className="rounded-lg border border-gray-200 bg-white px-4 py-3">
+              <h3 className="mb-2 text-xs font-semibold uppercase text-gray-500">Component Image</h3>
+              {images.map((img, i) => (
+                <p key={i} className="font-mono text-xs text-gray-600">{img.id as string}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// -- Single output/input table in result --
+
+function TableResultRow({ table, stage }: { table: Record<string, unknown>; stage: 'in' | 'out' }) {
+  const [expanded, setExpanded] = useState(false);
+  const id = table.id as string ?? '';
+  const name = table.name as string ?? table.displayName as string ?? '';
+  const columns = (table.columns as Array<Record<string, unknown>>) ?? [];
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-gray-50 transition-colors"
+      >
+        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+          stage === 'out' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'
+        }`}>
+          {stage}
+        </span>
+        <span className="font-mono text-sm text-gray-800">{name || id}</span>
+        {columns.length > 0 && (
+          <span className="text-xs text-gray-400">{columns.length} columns</span>
+        )}
+        <span className={`ml-auto text-[10px] text-gray-300 transition-transform ${expanded ? 'rotate-90' : ''}`}>&#9656;</span>
+      </button>
+      {expanded && (
+        <div className="border-t border-gray-100 bg-gray-50 px-4 py-2">
+          <p className="mb-1 font-mono text-xs text-gray-400">{id}</p>
+          {columns.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {columns.map((col, i) => (
+                <span key={i} className="rounded bg-white border border-gray-200 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">
+                  {col.name as string}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
