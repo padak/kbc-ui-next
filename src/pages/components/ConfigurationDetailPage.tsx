@@ -19,6 +19,7 @@ import { useConfiguration, useComponent } from '@/hooks/useComponents';
 import { useDeleteConfiguration } from '@/hooks/useComponents';
 import { useUpdateConfiguration, useUpdateConfigurationRow, useCopyConfiguration } from '@/hooks/useMutations';
 import { useComponentLookup } from '@/hooks/useComponentLookup';
+import { getComponentSchema } from '@/config/component-schemas';
 import { flowToMermaid, flowToText } from '@/lib/flowToMermaid';
 import { formatDate } from '@/lib/formatters';
 import type { ConfigurationRow } from '@/api/schemas';
@@ -409,7 +410,7 @@ export function ConfigurationDetailPage() {
       {/* Configuration Editor */}
       <h2 className="mb-3 text-lg font-semibold text-gray-900">Configuration</h2>
       <ConfigEditor
-        schema={component?.configurationSchema ?? null}
+        schema={getComponentSchema(componentId ?? '', component?.configurationSchema)}
         values={config.configuration as Record<string, unknown>}
         onSave={async (newValues) => {
           await updateConfig.mutateAsync({
