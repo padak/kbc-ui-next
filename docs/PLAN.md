@@ -190,6 +190,40 @@ Everything else from the legacy UI.
 - [ ] **Data Streams** - real-time ingestion
 - [ ] **Events** - event log per table/bucket/job
 
+### Phase 5c: Data Profiler & Storage UX
+Make storage browsing a first-class data exploration experience. Inspired by oss-ai-data-analyst profiler.
+
+**Layer 1: Data Preview enhancements** (inline, low effort):
+- [x] **Data Preview** - auto-load, collapsible, max-height viewport with internal scroll + sticky header
+- [x] **Columns with sample values** - 5 unique samples per column from preview data
+- [x] **Basic profiling** - distinct count, null count, min/max for numerics
+- [ ] **Column sorting** - click header to sort data preview by any column
+- [ ] **Data search** - filter rows by text search across all columns
+- [ ] **Sticky first column** - keep identifier column visible on horizontal scroll
+- [ ] **Load more** - button to fetch additional rows beyond initial 100
+
+**Layer 2: Column profile enrichment** (computed from sample data):
+- [x] **Type detection** - numeric vs string vs date vs boolean inference
+- [ ] **Completeness bar** - green/yellow/red visual bar per column (% non-null)
+- [ ] **Top values** - for categorical columns (<=50 distinct), show top 5 with counts
+- [ ] **Distribution sparkline** - tiny inline histogram for numeric columns
+- [ ] **Column metadata** - show columnMetadata from API (types, descriptions)
+
+**Layer 3: Full Profiler Modal** (dedicated view, higher effort):
+- [ ] **Profile button** - in table detail header, opens fullscreen modal
+- [ ] **Overview tab** - dataset-level stats: rows, columns, size, completeness %, type distribution
+- [ ] **Columns tab** - per-column cards with histogram (numeric), bar chart (categorical), date range (temporal)
+- [ ] **Insights tab** - auto-detected alerts: constant columns, high missing (>30%), imbalance (>60%), all-unique, high cardinality
+- [ ] **Missing Values tab** - horizontal completeness bars for all columns, ranked
+- [ ] **Charts** - Chart.js or recharts for histograms and distributions
+- [ ] **Workspace query** - for tables >100 rows, option to run profiling via Snowflake workspace for accurate stats
+
+**Bucket detail enhancements** (done):
+- [x] **Stats bar** - tables count, total rows, total size, created
+- [x] **Header badges** - stage (IN/OUT), backend (Snowflake), bucket ID
+- [x] **Column search** - search across table names and column names
+- [x] **Collapsible details** - bucket ID, backend, timestamps, metadata
+
 ### Phase 7: Power-user features
 Things legacy UI doesn't have but power users want.
 
