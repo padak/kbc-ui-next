@@ -160,7 +160,7 @@ export const ConfigurationSchema = z.object({
       id: z.number(),
       description: z.string(),
     }),
-    changeDescription: z.string().default(''),
+    changeDescription: z.string().nullable().transform((v) => v ?? ''),
   }),
 }).passthrough();
 
