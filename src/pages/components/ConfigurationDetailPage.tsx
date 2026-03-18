@@ -23,20 +23,22 @@ import { flowToMermaid, flowToText } from '@/lib/flowToMermaid';
 import { formatDate } from '@/lib/formatters';
 import type { ConfigurationRow } from '@/api/schemas';
 
-// Inline editable text — click to edit, Enter/blur to save, Escape to cancel
+// Inline editable text — click to edit, Enter/blur to save, Escape to cancel.
+// Draft state only exists while editing. When not editing, always shows current prop value.
 function EditableText({ value, onSave, placeholder, className }: {
   value: string;
   onSave: (value: string) => void;
   placeholder?: string;
   className?: string;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
+  const [draft, setDraft] = useState<string | null>(null);
+  const editing = draft !== null;
 
   function commit() {
+    if (draft === null) return;
     const trimmed = draft.trim();
     if (trimmed !== value) onSave(trimmed);
-    setEditing(false);
+    setDraft(null);
   }
 
   if (editing) {
@@ -47,7 +49,7 @@ function EditableText({ value, onSave, placeholder, className }: {
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === 'Enter') commit();
-          if (e.key === 'Escape') { setDraft(value); setEditing(false); }
+          if (e.key === 'Escape') setDraft(null);
         }}
         className={`rounded border border-blue-400 bg-white px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 ${className ?? ''}`}
         autoFocus
@@ -58,7 +60,7 @@ function EditableText({ value, onSave, placeholder, className }: {
   return (
     <span
       className={`cursor-pointer rounded px-1 hover:bg-gray-100 ${className ?? ''} ${!value && placeholder ? 'italic text-gray-300' : ''}`}
-      onClick={() => { setDraft(value); setEditing(true); }}
+      onClick={() => setDraft(value)}
       title="Click to edit"
     >
       {value || placeholder || ''}
