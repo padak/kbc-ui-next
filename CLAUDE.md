@@ -165,4 +165,4 @@ The legacy kbc-ui at `/Users/padak/github/kbc-ui/` serves as a reference for:
 
 - `docs/PLAN.md` - implementation plan with 7 phases
 - `docs/feature-gap-analysis.md` - comprehensive comparison with legacy UI
-- `docs/business-logic-audit.md` - frontend logic that should be in API
+- `docs/business-logic-audit.md` - frontend logic that should be in API. **Must be maintained** — when adding logic that works around API limitations (hacks, client-side parsing, schema workarounds), document it here with severity, risks, and proposed API fix. Contains "Active Hacks" section for fragile workarounds like SQL block disable.

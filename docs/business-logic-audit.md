@@ -1,25 +1,19 @@
 # Business Logic Audit
 
-Tracking frontend business logic that should ideally live in the API.
-Items discovered during the greenfield rewrite of kbc-ui.
-
-## Format
-
-| Module | Logic | Description | Severity | API Alternative |
-|--------|-------|-------------|----------|----------------|
+Tracking frontend business logic in **this UI (kbc-ui-next)** that should ideally live in the API.
+Only items that exist in our codebase — not legacy kbc-ui issues.
 
 ## Discovered Items
 
-<!-- Add items as they are discovered during the rewrite -->
-
 | Module | Logic | Description | Severity | API Alternative |
 |--------|-------|-------------|----------|----------------|
-| storage | Bucket/table filtering | Complex multi-level filtering with reduce chains over Immutable.js structures. 66 lines of filter logic in helpers.ts | Medium | Server-side filtering params on /v2/storage/tables |
-| components | InstalledComponentsStore | Central god-store with 27.8K LOC managing all component configs, performing merges and transformations | High | API should return ready-to-use data structures |
-| configurations | Version diffing | Frontend computes diffs between configuration versions | Medium | API could provide diff endpoint |
-| flows | Phase/task ordering | Complex DAG ordering logic for flow phases | High | Flow execution order should be API-driven |
-| transformations | Block/code disable | API schema only allows `name` + `script` on blocks[].codes[]. No native disable flag. We comment out SQL with `-- [DISABLED BY KBC-UI]` marker and store output mappings as `-- [KBC-UI-OUTPUT] {json}` inside the commented script. Works but fragile — if user edits raw JSON and removes markers, output mappings are lost. | High | API should support `disabled: boolean` on blocks and codes, and runner should skip disabled entries. Output mapping disable should also be API-native. |
-| transformations | Output mapping disable | When disabling a SQL block that creates tables, we remove affected output mappings from `storage.output.tables` and embed them as JSON comments in the disabled script. On re-enable we parse and restore them. This is a reversible hack but the source of truth is a SQL comment, not a proper data field. | High | API should support `disabled` flag on output mapping entries, or a separate disabled mappings store. |
+| storage | Bucket filtering | Client-side filtering by stage (in/out), linked, shared. Simple but could be server-side. `src/pages/storage/BucketsPage.tsx` | Low | Server-side filtering params on `/v2/storage/buckets` |
+| flows | Phase/task DAG ordering | FlowBuilder computes DAG layout from `dependsOn` arrays. FlowEditor manages phase ordering. `src/components/FlowBuilder.tsx`, `FlowEditor.tsx` | Medium | Flow execution order and visualization hints could be API-driven |
+| transformations | Block/code disable | No native `disabled` flag in API schema. We comment out SQL with markers. See Active Hacks below. `src/components/TransformationBlocks.tsx` | High | API should support `disabled: boolean` on blocks and codes |
+| transformations | Output mapping disable | We remove output mappings from config and embed them as JSON comments in disabled SQL. See Active Hacks below. `src/components/TransformationBlocks.tsx` | High | API should support `disabled` flag on output mapping entries |
+| transformations | Dependency analysis | `analyzeDisableImpact()` parses SQL to find CREATE TABLE / FROM / JOIN to detect cross-block dependencies. `src/components/TransformationBlocks.tsx` | Low | Acceptable frontend logic — SQL parsing for UX hints |
+| transformations | SQL statement splitting | `splitStatements()` splits SQL by `;` respecting quotes/comments for Keboola runner. `src/components/TransformationBlocks.tsx` | Medium | Runner could accept full SQL text and split server-side |
+| transformations | Output mapping suggestions | `extractCreatedTables()` parses CREATE TABLE from SQL to suggest output mapping sources. `src/components/MappingEditor.tsx` | Low | Acceptable frontend logic — UX convenience |
 
 ## Notes
 
