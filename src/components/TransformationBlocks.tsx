@@ -6,7 +6,17 @@
 
 import { useState, useCallback, useMemo, lazy, Suspense } from 'react';
 
-const SqlEditor = lazy(() => import('@/components/SqlEditor').then((m) => ({ default: m.SqlEditor })));
+// Lazy-load SqlEditor but allow prefetching on hover
+const sqlEditorImport = () => import('@/components/SqlEditor');
+const SqlEditor = lazy(() => sqlEditorImport().then((m) => ({ default: m.SqlEditor })));
+
+// Prefetch SqlEditor module (call on hover over any code block)
+let sqlEditorPrefetched = false;
+function prefetchSqlEditor() {
+  if (sqlEditorPrefetched) return;
+  sqlEditorPrefetched = true;
+  sqlEditorImport();
+}
 
 // -- Types matching the Keboola configuration structure --
 // blocks[].codes[] only allows "name" and "script" — no extra fields.
@@ -571,7 +581,10 @@ function CodeBlockItem({
   }
 
   return (
-    <div className={`border-b border-neutral-100 last:border-b-0 ${block.disabled ? 'opacity-50' : ''}`}>
+    <div
+      className={`border-b border-neutral-100 last:border-b-0 ${block.disabled ? 'opacity-50' : ''}`}
+      onMouseEnter={prefetchSqlEditor}
+    >
       <div className="flex w-full items-center gap-2 px-4 py-2 text-sm">
         <button type="button" onClick={() => setExpanded(!expanded)} className="flex items-center gap-2 flex-1 text-left hover:bg-neutral-50 rounded transition-colors py-0.5 -ml-1 pl-1">
           <Chevron open={expanded} />
@@ -646,7 +659,7 @@ function CodeBlockItem({
               </>
             )}
           </div>
-          <Suspense fallback={<pre className="bg-neutral-900 p-4 font-mono text-xs text-green-400">{editMode ? draft : block.script}</pre>}>
+          <Suspense fallback={<div className="bg-[#282c34] p-4 min-h-[100px] flex items-center justify-center text-xs text-neutral-500">Loading editor...</div>}>
             <SqlEditor
               value={editMode ? draft : block.script}
               onChange={editMode ? setDraft : () => {}}
