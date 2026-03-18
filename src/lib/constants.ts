@@ -29,6 +29,7 @@ export const ROUTES = {
   TRANSFORMATIONS: '/transformations',
   JOBS: '/jobs',
   JOB_DETAIL: '/jobs/:jobId',
+  EVENTS: '/events',
   SETTINGS: '/settings',
   ALL_JOBS: '/jobs/all',
 } as const;
@@ -50,5 +51,6 @@ export const NAV_ITEMS = [
   { label: 'Flows', path: ROUTES.FLOWS, icon: 'workflow' },
   { label: 'Transformations', path: ROUTES.TRANSFORMATIONS, icon: 'code' },
   { label: 'Jobs', path: ROUTES.JOBS, icon: 'play' },
+  { label: 'Events', path: ROUTES.EVENTS, icon: 'log' },
   { label: 'Settings', path: ROUTES.SETTINGS, icon: 'settings' },
 ] as const;

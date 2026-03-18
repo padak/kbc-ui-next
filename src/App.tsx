@@ -26,6 +26,7 @@ import { JobDetailPage } from '@/pages/jobs/JobDetailPage';
 import { FlowsPage } from '@/pages/flows/FlowsPage';
 import { TransformationsPage } from '@/pages/transformations/TransformationsPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
+import { EventsPage } from '@/pages/events/EventsPage';
 import { SetupPage } from '@/pages/SetupPage';
 
 const queryClient = new QueryClient({
@@ -71,6 +72,7 @@ export function App() {
             <Route path="/jobs" element={<JobsPage />} />
             <Route path="/jobs/all" element={<AllJobsPage />} />
             <Route path="/jobs/:jobId" element={<JobDetailPage />} />
+            <Route path="/events" element={<EventsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

@@ -17,6 +17,7 @@ const ICONS: Record<string, string> = {
   workflow: '\u2942',
   code: '\u2039\u203A',
   play: '\u25B6',
+  log: '\u2630',
   settings: '\u2699',
 };
 

@@ -9,6 +9,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatDate } from '@/lib/formatters';
 import { useJob } from '@/hooks/useJobs';
+import { useJobEvents } from '@/hooks/useEvents';
+import { EventsViewer } from '@/components/EventsViewer';
 import { calculateJobCredits, formatCredits, getContainerSize } from '@/config/credits';
 
 function formatDuration(seconds: number | null): string {
@@ -26,6 +28,7 @@ export function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const { data: job, isLoading, error } = useJob(jobId ?? '');
+  const { data: jobEvents, isLoading: eventsLoading, error: eventsError } = useJobEvents(job?.runId);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12 text-gray-400">Loading job...</div>;
@@ -114,6 +117,18 @@ export function JobDetailPage() {
           <p className="text-xs text-gray-500">Run by</p>
           <p className="text-sm font-semibold">{job.token.description}</p>
         </div>
+      </div>
+
+      {/* Job Events — live stream */}
+      <div className="mb-6">
+        <EventsViewer
+          events={jobEvents ?? []}
+          isLoading={eventsLoading}
+          error={eventsError instanceof Error ? eventsError : null}
+          title={`Job Events${job.status === 'processing' ? ' (live)' : ''}`}
+          maxHeight="400px"
+          emptyMessage="No events for this job."
+        />
       </div>
 
       {/* Raw result JSON */}
