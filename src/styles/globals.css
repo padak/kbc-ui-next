@@ -1,1 +1,209 @@
 @import 'tailwindcss';
+
+/* ==========================================================================
+   Keboola Design System — Tailwind v4 Theme
+   Source: Figma "Product Design System" (VVjvQJQTMcFPDkWqB0Bf39TD)
+   Tokens: src/config/design-tokens.ts
+   ========================================================================== */
+
+@theme {
+  /* ── Font Family ────────────────────────────────────────────────────── */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* ── Neutral / Grey ─────────────────────────────────────────────────── */
+  --color-neutral-white: #FFFFFF;
+  --color-neutral-50: #F2F4F7;
+  --color-neutral-100: #EDF0F5;
+  --color-neutral-150: #D9DDE5;
+  --color-neutral-200: #C5CBD6;
+  --color-neutral-300: #A2AAB8;
+  --color-neutral-400: #7C8594;
+  --color-neutral-500: #565C66;
+  --color-neutral-600: #454952;
+  --color-neutral-700: #33373D;
+  --color-neutral-800: #222529;
+  --color-neutral-900: #101114;
+
+  /* ── Success / Green ────────────────────────────────────────────────── */
+  --color-green-100: #E0FFE0;
+  --color-green-200: #BAF5BA;
+  --color-green-300: #93F593;
+  --color-green-400: #51E051;
+  --color-green-500: #1EC71E;
+  --color-green-600: #1BB31B;
+  --color-green-700: #189F18;
+  --color-green-800: #158B15;
+  --color-green-900: #0F630F;
+
+  /* ── Error / Red ────────────────────────────────────────────────────── */
+  --color-red-100: #FFE0E6;
+  --color-red-200: #FFC2CC;
+  --color-red-300: #FF99AA;
+  --color-red-400: #FF5C77;
+  --color-red-500: #E00025;
+  --color-red-600: #B8001F;
+  --color-red-700: #A3001B;
+  --color-red-800: #7A0014;
+  --color-red-900: #52000E;
+
+  /* ── Warning / Orange ───────────────────────────────────────────────── */
+  --color-orange-100: #FFF3E0;
+  --color-orange-200: #FFE7C2;
+  --color-orange-300: #FFD699;
+  --color-orange-400: #FFBE5C;
+  --color-orange-500: #F59300;
+  --color-orange-600: #D17D00;
+  --color-orange-700: #A36200;
+  --color-orange-800: #7A4900;
+  --color-orange-900: #523100;
+
+  /* ── Secondary / Blue ───────────────────────────────────────────────── */
+  --color-blue-100: #E0F0FF;
+  --color-blue-200: #C2E0FF;
+  --color-blue-300: #99CCFF;
+  --color-blue-400: #5CADFF;
+  --color-blue-500: #1F8FFF;
+  --color-blue-600: #0975E0;
+  --color-blue-700: #075FB8;
+  --color-blue-800: #064A8F;
+  --color-blue-900: #043566;
+
+  /* ── Accent / Purple ────────────────────────────────────────────────── */
+  --color-purple-100: #EBE0FF;
+  --color-purple-200: #D6C2FF;
+  --color-purple-300: #C9ADFF;
+  --color-purple-400: #AD85FF;
+  --color-purple-500: #925CFF;
+  --color-purple-600: #6F36E0;
+  --color-purple-700: #5B2CB8;
+  --color-purple-800: #46228F;
+  --color-purple-900: #321866;
+
+  /* ── Accent / Cyan ──────────────────────────────────────────────────── */
+  --color-cyan-100: #E0F9FF;
+  --color-cyan-200: #BEF3FF;
+  --color-cyan-300: #83EBFF;
+  --color-cyan-400: #00DEF7;
+  --color-cyan-500: #00BBD1;
+  --color-cyan-600: #00A0B2;
+  --color-cyan-700: #007D8C;
+  --color-cyan-800: #005D69;
+  --color-cyan-900: #003F47;
+
+  /* ── Accent / Teal ──────────────────────────────────────────────────── */
+  --color-teal-100: #CFFFE6;
+  --color-teal-200: #96FFCE;
+  --color-teal-300: #00FAAF;
+  --color-teal-400: #00E6A1;
+  --color-teal-500: #00C287;
+  --color-teal-600: #00A673;
+  --color-teal-700: #008159;
+  --color-teal-800: #006141;
+  --color-teal-900: #00422B;
+
+  /* ── Accent / Yellow ────────────────────────────────────────────────── */
+  --color-yellow-100: #FFFFCC;
+  --color-yellow-200: #FFFF99;
+  --color-yellow-300: #FFFF33;
+  --color-yellow-400: #F5F500;
+  --color-yellow-500: #E5E500;
+  --color-yellow-600: #CCCC00;
+  --color-yellow-700: #B2B200;
+  --color-yellow-800: #999900;
+  --color-yellow-900: #808000;
+
+  /* ── Accent / Pink ──────────────────────────────────────────────────── */
+  --color-pink-100: #FDE8FB;
+  --color-pink-200: #FAD1F6;
+  --color-pink-300: #F8BCF2;
+  --color-pink-400: #F28CE8;
+  --color-pink-500: #ED5EDF;
+  --color-pink-600: #E619D1;
+  --color-pink-700: #B814A7;
+  --color-pink-800: #8A0F7D;
+  --color-pink-900: #5C0A54;
+
+  /* ── Shadows ────────────────────────────────────────────────────────── */
+  --shadow-card: 0px 3px 3px 0px rgba(34, 37, 41, 0.08);
+  --shadow-dialog: 0px 3px 4px 0px rgba(34, 37, 41, 0.12);
+
+  /* ── Border Radius ──────────────────────────────────────────────────── */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+}
+
+/* ==========================================================================
+   Design System Toggle
+   When data-theme="keboola" is set on <html>, remap Tailwind's default
+   gray palette to our neutral tokens. All bg-gray-*, text-gray-*, border-gray-*
+   classes automatically pick up the design system colors.
+   Remove this block when the design system is permanently adopted.
+   ========================================================================== */
+
+[data-theme="keboola"] {
+  /* ── Gray → Neutral remap ───────────────────────────────────────────── */
+  --color-gray-50:  var(--color-neutral-50);   /* #F2F4F7 — cooler than Tailwind default */
+  --color-gray-100: var(--color-neutral-100);  /* #EDF0F5 */
+  --color-gray-200: var(--color-neutral-150);  /* #D9DDE5 — using 150 for softer borders */
+  --color-gray-300: var(--color-neutral-200);  /* #C5CBD6 */
+  --color-gray-400: var(--color-neutral-400);  /* #7C8594 */
+  --color-gray-500: var(--color-neutral-500);  /* #565C66 */
+  --color-gray-600: var(--color-neutral-600);  /* #454952 */
+  --color-gray-700: var(--color-neutral-700);  /* #33373D */
+  --color-gray-800: var(--color-neutral-800);  /* #222529 */
+  --color-gray-900: var(--color-neutral-900);  /* #101114 */
+  --color-gray-950: var(--color-neutral-900);  /* map 950 to darkest neutral */
+
+  /* ── Primary accent: green instead of blue ──────────────────────────── */
+  /* Active/selected states in sidebar, links, focus rings → green primary */
+  --color-blue-50:  var(--color-green-100);    /* #E0FFE0 — active bg */
+  --color-blue-100: var(--color-green-100);    /* #E0FFE0 */
+  --color-blue-300: var(--color-green-400);    /* #51E051 — hover border */
+  --color-blue-700: var(--color-green-700);    /* #189F18 — active text */
+
+  /* ── Typography ─────────────────────────────────────────────────────── */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* ── Subtle global refinements ──────────────────────────────────────── */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Design system component refinements ──────────────────────────────── */
+
+/* Cards get design system shadow and radius */
+[data-theme="keboola"] .rounded-lg {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+/* Table headers get design system typography (uppercase, tracked) */
+[data-theme="keboola"] thead th {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Sidebar gets subtle left accent on active item */
+[data-theme="keboola"] aside nav a[aria-current="page"] {
+  border-left: 3px solid var(--color-green-500);
+  padding-left: 7px; /* compensate for border */
+}
+
+/* Page headings: design system H1 weight */
+[data-theme="keboola"] h1 {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="keboola"] h2 {
+  font-weight: 500;
+}
+
+/* Status badges: slightly tighter radius matching DS */
+[data-theme="keboola"] .rounded-full {
+  border-radius: var(--radius-full, 9999px);
+}

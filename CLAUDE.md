@@ -26,6 +26,22 @@ This enables quick codebase discovery via: `find src -name '*.ts' -o -name '*.ts
 - **Tailwind CSS v4** (utility-first styling)
 - **Vite 6** (bundler)
 
+## Design System
+
+Figma source: "Product Design System" (file key `VVjvQJQTMcFPDkWqB0Bf39TD`).
+
+**Token files** (keep in sync when Figma changes):
+- `src/config/design-tokens.ts` — TypeScript tokens for runtime access (colors, typography, shadows, radii, button/modal variants)
+- `src/styles/globals.css` — Tailwind v4 `@theme` directives registering all tokens as CSS custom properties
+
+**Color palettes**: neutral, green, red, orange, blue, purple, cyan, teal, yellow, pink — each with shades 100–900.
+
+**Typography**: Inter font. Styles: H1 (32/500), H2 (24/500), H3 (16/500), Body (14/400), Body Medium (14/500), Button (12/500/uppercase/0.08em tracking).
+
+**Shadows**: `shadow-card` (subtle), `shadow-dialog` (elevated). **Radii**: `rounded-sm` (2px), `rounded-md` (4px), `rounded-lg` (8px), `rounded-xl` (10px).
+
+**Usage**: always use design system tokens via Tailwind classes (`bg-green-500`, `text-neutral-900`, `shadow-card`, `rounded-lg`) or TS imports from `design-tokens.ts`. Never hardcode hex colors or font sizes in components.
+
 ## Architecture Rules
 
 1. **No Flux, no Immutable.js** - ever. TanStack Query for server state, Zustand for UI state.

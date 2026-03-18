@@ -10,6 +10,7 @@ import { useConnectionStore } from '@/stores/connection';
 import { Sidebar } from './Sidebar';
 import { CommandPalette } from './CommandPalette';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ThemeToggle } from './ThemeToggle';
 import { useMetadataPreload } from '@/hooks/useMetadataPreload';
 
 export function AppLayout() {
@@ -58,6 +59,7 @@ function AppLayoutInner({
         </ErrorBoundary>
       </main>
       <CommandPalette />
+      <ThemeToggle />
     </div>
   );
 }
