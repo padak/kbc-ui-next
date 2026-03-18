@@ -23,13 +23,26 @@ function isStorageEvent(event: KeboolaEvent): boolean {
 
 // -- Format event as plain text for copy --
 
-function eventToText(e: KeboolaEvent): string {
+function eventToText(e: KeboolaEvent, includeDetails: boolean): string {
   const time = new Date(e.created).toISOString();
   const type = e.type.toUpperCase().padEnd(7);
   const comp = e.component ? ` [${e.component}]` : '';
   const msg = e.message || e.event;
   const desc = e.description ? `\n    ${e.description}` : '';
-  return `${time} ${type}${comp} ${msg}${desc}`;
+  let text = `${time} ${type}${comp} ${msg}${desc}`;
+  if (includeDetails) {
+    const detail: Record<string, unknown> = {};
+    if (e.event) detail.event = e.event;
+    if (Object.keys(e.params).length > 0) detail.params = e.params;
+    if (Object.keys(e.results).length > 0) detail.results = e.results;
+    if (e.performance && Object.keys(e.performance).length > 0) detail.performance = e.performance;
+    if (e.token) detail.token = e.token;
+    if (e.context) detail.context = e.context;
+    if (Object.keys(detail).length > 0) {
+      text += '\n' + JSON.stringify(detail, null, 2).split('\n').map((l) => '    ' + l).join('\n');
+    }
+  }
+  return text;
 }
 
 // -- Helpers --
@@ -195,15 +208,15 @@ export function EventsViewer({
     return result;
   }, [events, search, typeFilter, sourceFilter]);
 
-  const handleCopyAll = useCallback(() => {
-    const text = filtered.map(eventToText).join('\n');
+  const handleCopy = useCallback((withDetails: boolean) => {
+    const text = filtered.map((e) => eventToText(e, withDetails)).join('\n');
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }, [filtered]);
 
-  const handleDownload = useCallback(() => {
-    const text = filtered.map(eventToText).join('\n');
+  const handleDownload = useCallback((withDetails: boolean) => {
+    const text = filtered.map((e) => eventToText(e, withDetails)).join('\n');
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -281,20 +294,45 @@ export function EventsViewer({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {copied ? (
+            <span className="px-2 py-1 text-[10px] text-green-600">Copied!</span>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleCopy(false)}
+                className="rounded px-2 py-1 text-[10px] text-gray-500 hover:bg-gray-100 transition-colors"
+                title="Copy messages only"
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCopy(true)}
+                className="rounded px-2 py-1 text-[10px] text-gray-500 hover:bg-gray-100 transition-colors"
+                title="Copy with full event details (params, results, context)"
+              >
+                Copy+Detail
+              </button>
+            </>
+          )}
+          <span className="text-gray-200">|</span>
           <button
             type="button"
-            onClick={handleCopyAll}
+            onClick={() => handleDownload(false)}
             className="rounded px-2 py-1 text-[10px] text-gray-500 hover:bg-gray-100 transition-colors"
+            title="Download messages only"
           >
-            {copied ? 'Copied!' : 'Copy All'}
+            .log
           </button>
           <button
             type="button"
-            onClick={handleDownload}
+            onClick={() => handleDownload(true)}
             className="rounded px-2 py-1 text-[10px] text-gray-500 hover:bg-gray-100 transition-colors"
+            title="Download with full event details"
           >
-            .log
+            .log+Detail
           </button>
         </div>
       </div>
