@@ -121,7 +121,6 @@ The two complex UIs that need custom implementation.
 - [x] **CodeMirror 6** - SQL syntax highlighting, table/column autocomplete, one-dark theme
 - [x] **Phase/Block editor** - add/remove/rename/disable phases and blocks, impact analysis
 - [x] **Block disable** - comment-based disable with output mapping handling (see business-logic-audit.md)
-- [ ] **Query results viewer** - tabular results display
 
 ### Future: AI-driven flow orchestration
 Instead of drag-and-drop, use prompt-driven flow editing:
