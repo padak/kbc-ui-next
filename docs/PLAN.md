@@ -78,7 +78,7 @@ Replace raw JSON with auto-generated forms from component's configurationSchema.
 - [x] **Save mutations** - updateConfiguration + updateConfigurationRow via API
 - [x] **24 tests** - SchemaForm (15) + ConfigEditor (9)
 - [x] **Input/Output mapping editor** - collapsible mapping with add/remove, output suggestions from CREATE TABLE
-- [x] **Credentials section** - handled generically by SchemaForm (password format fields)
+- [ ] **Credentials section** - DB extractors (MySQL, Snowflake, etc.) have no configurationSchema — their connection form (host, port, user, password, database) is hardcoded in legacy UI. Need either a generic DB credentials form component or a way to render the `parameters.db` structure as a form.
 
 ### Phase 4: Multi-project (DONE - core)
 The killer differentiator. Connect multiple projects, search across them.
