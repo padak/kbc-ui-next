@@ -4,7 +4,7 @@
 // Used by: App.tsx route /components/:componentId/:configId.
 // Data from: hooks/useComponents.ts (useConfiguration), hooks/useComponentLookup.ts.
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { RunButton } from '@/components/RunButton';
@@ -21,6 +21,34 @@ import { useComponentLookup } from '@/hooks/useComponentLookup';
 import { flowToMermaid, flowToText } from '@/lib/flowToMermaid';
 import { formatDate } from '@/lib/formatters';
 import type { ConfigurationRow } from '@/api/schemas';
+
+// Isolated component to prevent FlowBuilder re-render on copy state change
+const FlowCopyButtons = memo(function FlowCopyButtons({ configuration, lookup }: {
+  configuration: Record<string, unknown>;
+  lookup: { getComponentName: (id: string) => string; getConfigName: (cid: string, cfgId: string) => string };
+}) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  function copy(format: 'mermaid' | 'text') {
+    const text = format === 'mermaid'
+      ? flowToMermaid(configuration, lookup)
+      : flowToText(configuration, lookup);
+    navigator.clipboard.writeText(text);
+    setCopied(format);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  return (
+    <div className="flex gap-2">
+      <button onClick={() => copy('mermaid')} className="rounded border border-gray-300 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50">
+        {copied === 'mermaid' ? 'Copied!' : 'Copy Mermaid'}
+      </button>
+      <button onClick={() => copy('text')} className="rounded border border-gray-300 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50">
+        {copied === 'text' ? 'Copied!' : 'Copy as Text'}
+      </button>
+    </div>
+  );
+});
 
 // Extract source/destination info from row configuration JSON.
 // DB extractors use parameters.table.{schema,tableName} for source
@@ -55,7 +83,6 @@ export function ConfigurationDetailPage() {
   const deleteConfig = useDeleteConfiguration(componentId ?? '');
   const updateConfig = useUpdateConfiguration(componentId ?? '', configId ?? '');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
   const { getComponentName, getComponentIcon, getConfigName } = useComponentLookup();
 
   const isFlow = componentId === 'keboola.orchestrator' || componentId === 'keboola.flow';
@@ -124,30 +151,10 @@ export function ConfigurationDetailPage() {
         <div className="mb-6">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Flow Builder</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  const mermaid = flowToMermaid(config.configuration as Record<string, unknown>, { getComponentName, getConfigName });
-                  navigator.clipboard.writeText(mermaid);
-                  setCopiedFormat('mermaid');
-                  setTimeout(() => setCopiedFormat(null), 2000);
-                }}
-                className="rounded border border-gray-300 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
-              >
-                {copiedFormat === 'mermaid' ? 'Copied!' : 'Copy Mermaid'}
-              </button>
-              <button
-                onClick={() => {
-                  const text = flowToText(config.configuration as Record<string, unknown>, { getComponentName, getConfigName });
-                  navigator.clipboard.writeText(text);
-                  setCopiedFormat('text');
-                  setTimeout(() => setCopiedFormat(null), 2000);
-                }}
-                className="rounded border border-gray-300 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
-              >
-                {copiedFormat === 'text' ? 'Copied!' : 'Copy as Text'}
-              </button>
-            </div>
+            <FlowCopyButtons
+              configuration={config.configuration as Record<string, unknown>}
+              lookup={{ getComponentName, getConfigName }}
+            />
           </div>
           <FlowBuilder
             configuration={config.configuration as Record<string, unknown>}
