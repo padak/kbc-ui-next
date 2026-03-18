@@ -78,7 +78,7 @@ Replace raw JSON with auto-generated forms from component's configurationSchema.
 - [x] **Save mutations** - updateConfiguration + updateConfigurationRow via API
 - [x] **24 tests** - SchemaForm (15) + ConfigEditor (9)
 - [x] **Input/Output mapping editor** - collapsible mapping with add/remove, output suggestions from CREATE TABLE
-- [ ] **Credentials section** - DB extractors (MySQL, Snowflake, etc.) have no configurationSchema — their connection form (host, port, user, password, database) is hardcoded in legacy UI. Need either a generic DB credentials form component or a way to render the `parameters.db` structure as a form.
+- [x] **Credentials section** - fallback schema registry (`src/config/component-schemas.ts`) provides JSON schemas for 16 DB components that lack configurationSchema. SchemaForm renders host/port/user/password/database/SSH/SSL automatically.
 
 ### Phase 4: Multi-project (DONE - core)
 The killer differentiator. Connect multiple projects, search across them.
@@ -162,6 +162,13 @@ Apply Keboola Product Design System from Figma. Toggle on/off via `data-theme="k
 ### Phase 6: Remaining features
 Everything else from the legacy UI.
 
+**Sync Actions** (component-driven interactive actions):
+- [ ] **Sync Actions API client** - `POST {syncActionsUrl}/actions` with `{ componentId, action, configData }`. Returns immediate result (not a job). Service URL from token verify response.
+- [ ] **Test Connection button** - for DB extractors/writers. Sends current credentials via `testConnection` action, shows success/error toast. Critical for credentials UX.
+- [ ] **Schema-driven sync actions** - discover available actions from component schema `properties[].options.async.action`. Render buttons dynamically.
+- [ ] **Generic extractor actions** - `test_request` (test HTTP endpoint), `load_from_curl` (parse cURL to config), `infer_mapping` (auto-detect table structure)
+
+**Other features:**
 - [ ] **Data Catalog** - shared buckets between projects
 - [ ] **Data Apps** - Streamlit app management
 - [ ] **Workspaces** - Snowflake/Python/R workspace management
