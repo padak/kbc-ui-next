@@ -171,39 +171,211 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Design system component refinements ──────────────────────────────── */
+/* ==========================================================================
+   Design System Component Refinements
+   Scoped under [data-theme="keboola"] so toggle works.
+   ========================================================================== */
 
-/* Cards get design system shadow and radius */
-[data-theme="keboola"] .rounded-lg {
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+/* ── Layout shell ────────────────────────────────────────────────────── */
+
+/* Sidebar: clean white with subtle separator */
+[data-theme="keboola"] aside {
+  background: var(--color-neutral-white);
+  border-right-color: var(--color-neutral-150);
 }
 
-/* Table headers get design system typography (uppercase, tracked) */
-[data-theme="keboola"] thead th {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+/* Sidebar header: Keboola branding */
+[data-theme="keboola"] aside > div:first-child {
+  border-bottom-color: var(--color-neutral-150);
 }
 
-/* Sidebar gets subtle left accent on active item */
+/* Sidebar nav link: active state with green accent */
 [data-theme="keboola"] aside nav a[aria-current="page"] {
+  background: var(--color-green-100);
+  color: var(--color-green-700);
   border-left: 3px solid var(--color-green-500);
-  padding-left: 7px; /* compensate for border */
+  padding-left: 7px;
 }
 
-/* Page headings: design system H1 weight */
+/* Sidebar nav link: hover */
+[data-theme="keboola"] aside nav a:not([aria-current="page"]):hover {
+  background: var(--color-neutral-50);
+}
+
+/* Main content area: warm neutral background */
+[data-theme="keboola"] main {
+  background: var(--color-neutral-50);
+}
+
+/* ── Typography ──────────────────────────────────────────────────────── */
+
 [data-theme="keboola"] h1 {
   font-weight: 500;
   letter-spacing: -0.01em;
+  color: var(--color-neutral-900);
 }
 
 [data-theme="keboola"] h2 {
   font-weight: 500;
+  color: var(--color-neutral-900);
 }
 
-/* Status badges: slightly tighter radius matching DS */
-[data-theme="keboola"] .rounded-full {
-  border-radius: var(--radius-full, 9999px);
+/* ── Cards ────────────────────────────────────────────────────────────── */
+
+/* Stats cards and content cards */
+[data-theme="keboola"] .rounded-lg {
+  border-radius: var(--radius-lg);
+}
+
+/* Cards with border get subtle design system border color */
+[data-theme="keboola"] .border-gray-200,
+[data-theme="keboola"] .border-gray-300 {
+  border-color: var(--color-neutral-150);
+}
+
+/* ── Tables ───────────────────────────────────────────────────────────── */
+
+[data-theme="keboola"] thead th {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-400);
+}
+
+[data-theme="keboola"] tbody tr:hover {
+  background: var(--color-neutral-50);
+}
+
+[data-theme="keboola"] .divide-gray-200 > :not(:last-child) {
+  border-color: var(--color-neutral-100);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+
+/* Primary buttons (green) */
+[data-theme="keboola"] .bg-green-600,
+[data-theme="keboola"] .bg-green-500 {
+  background: var(--color-green-500);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="keboola"] .bg-green-600:hover,
+[data-theme="keboola"] .bg-green-500:hover {
+  background: var(--color-green-600);
+}
+
+/* Danger buttons */
+[data-theme="keboola"] .border-red-300 {
+  border-color: var(--color-red-300);
+}
+
+[data-theme="keboola"] .text-red-600 {
+  color: var(--color-red-500);
+}
+
+/* Secondary/ghost buttons */
+[data-theme="keboola"] button.border-gray-300 {
+  border-color: var(--color-neutral-200);
+  border-radius: var(--radius-md);
+}
+
+/* ── Status badges ────────────────────────────────────────────────────── */
+
+[data-theme="keboola"] .bg-green-50 {
+  background: var(--color-green-100);
+}
+
+[data-theme="keboola"] .text-green-700 {
+  color: var(--color-green-700);
+}
+
+[data-theme="keboola"] .bg-red-50 {
+  background: var(--color-red-100);
+}
+
+[data-theme="keboola"] .text-red-700 {
+  color: var(--color-red-700);
+}
+
+[data-theme="keboola"] .bg-yellow-50 {
+  background: var(--color-orange-100);
+}
+
+[data-theme="keboola"] .text-yellow-700 {
+  color: var(--color-orange-700);
+}
+
+[data-theme="keboola"] .bg-blue-50 {
+  background: var(--color-blue-100);
+}
+
+[data-theme="keboola"] .text-blue-600,
+[data-theme="keboola"] .text-blue-700 {
+  color: var(--color-blue-600);
+}
+
+[data-theme="keboola"] .bg-purple-50 {
+  background: var(--color-purple-100);
+}
+
+/* ── Links ────────────────────────────────────────────────────────────── */
+
+[data-theme="keboola"] a.text-blue-600,
+[data-theme="keboola"] .text-blue-600 {
+  color: var(--color-blue-600);
+}
+
+[data-theme="keboola"] a.text-blue-600:hover {
+  color: var(--color-blue-700);
+}
+
+/* ── Focus rings ──────────────────────────────────────────────────────── */
+
+[data-theme="keboola"] *:focus-visible {
+  outline: 2px solid var(--color-green-500);
+  outline-offset: 2px;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────── */
+
+[data-theme="keboola"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+[data-theme="keboola"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme="keboola"] ::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-200);
+  border-radius: 3px;
+}
+
+[data-theme="keboola"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-300);
+}
+
+/* ── Run Component button (primary action) ────────────────────────────── */
+
+[data-theme="keboola"] .bg-green-600.text-white {
+  background: var(--color-green-500);
+  box-shadow: 0 1px 2px rgba(30, 199, 30, 0.2);
+  transition: all 0.15s ease;
+}
+
+[data-theme="keboola"] .bg-green-600.text-white:hover {
+  background: var(--color-green-600);
+  box-shadow: 0 2px 4px rgba(30, 199, 30, 0.3);
+  transform: translateY(-1px);
+}
+
+/* ── Transitions ──────────────────────────────────────────────────────── */
+
+[data-theme="keboola"] a,
+[data-theme="keboola"] button {
+  transition: all 0.15s ease;
 }
