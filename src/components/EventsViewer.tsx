@@ -1,15 +1,13 @@
 // file: src/components/EventsViewer.tsx
 // Terminal-style event log viewer. Shows events as a searchable, scrollable stream.
-// Supports live polling (new events appear at top), type-based color coding,
-// copy all to clipboard, and expand individual events for full detail.
+// Supports live polling, type/source color coding, search with Ctrl+F,
+// copy all to clipboard, download as .log, expand for full JSON detail.
 // Used by: EventsPage (global), JobDetailPage (per-job), TableDetailPage (per-table).
-// Design: clean monospace log, not a table. Optimized for data engineers.
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import type { KeboolaEvent } from '@/api/events';
-// formatDate available but using custom formatTime for compact display
 
-// -- Event type colors --
+// -- Event type styles --
 
 const TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   success: { bg: 'bg-green-50', text: 'text-green-700', label: 'OK' },
@@ -17,6 +15,11 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> =
   warn: { bg: 'bg-orange-50', text: 'text-orange-700', label: 'WARN' },
   info: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'INFO' },
 };
+
+// Is this a storage/system event vs component event?
+function isStorageEvent(event: KeboolaEvent): boolean {
+  return event.component === 'storage' || event.event.startsWith('storage.');
+}
 
 // -- Format event as plain text for copy --
 
@@ -27,86 +30,6 @@ function eventToText(e: KeboolaEvent): string {
   const msg = e.message || e.event;
   const desc = e.description ? `\n    ${e.description}` : '';
   return `${time} ${type}${comp} ${msg}${desc}`;
-}
-
-// -- Single event row --
-
-function EventRow({ event }: { event: KeboolaEvent }) {
-  const [expanded, setExpanded] = useState(false);
-  const style = TYPE_STYLES[event.type] ?? TYPE_STYLES.info!;
-  const hasDetails = event.description || Object.keys(event.params).length > 0 || Object.keys(event.results).length > 0;
-
-  return (
-    <div className={`border-b border-gray-100 last:border-b-0 ${event.type === 'error' ? 'bg-red-50/30' : ''}`}>
-      <button
-        type="button"
-        onClick={() => hasDetails && setExpanded(!expanded)}
-        className={`flex w-full items-start gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-50 transition-colors ${hasDetails ? 'cursor-pointer' : 'cursor-default'}`}
-      >
-        {/* Timestamp */}
-        <span className="shrink-0 font-mono text-gray-400 tabular-nums" title={event.created}>
-          {formatTime(event.created)}
-        </span>
-
-        {/* Type badge */}
-        <span className={`shrink-0 rounded px-1 py-0.5 font-mono text-[10px] font-semibold ${style.bg} ${style.text}`}>
-          {style.label}
-        </span>
-
-        {/* Component */}
-        {event.component && (
-          <span className="shrink-0 truncate font-mono text-gray-400" style={{ maxWidth: '180px' }} title={event.component}>
-            {shortenComponentId(event.component)}
-          </span>
-        )}
-
-        {/* Message */}
-        <span className={`min-w-0 flex-1 font-mono ${event.type === 'error' ? 'text-red-700' : 'text-gray-800'}`}>
-          {event.message || event.event}
-        </span>
-
-        {/* Expand indicator */}
-        {hasDetails && (
-          <span className={`shrink-0 text-gray-300 transition-transform ${expanded ? 'rotate-90' : ''}`}>
-            &#9656;
-          </span>
-        )}
-      </button>
-
-      {/* Expanded detail */}
-      {expanded && (
-        <div className="border-t border-gray-100 bg-gray-50 px-3 py-2 font-mono text-xs">
-          {event.description && (
-            <div className="mb-2 whitespace-pre-wrap text-gray-600">{event.description}</div>
-          )}
-          {Object.keys(event.params).length > 0 && (
-            <div className="mb-2">
-              <span className="text-gray-400">params: </span>
-              <pre className="mt-0.5 overflow-x-auto rounded bg-white p-2 text-gray-700 border border-gray-200">
-                {JSON.stringify(event.params, null, 2)}
-              </pre>
-            </div>
-          )}
-          {Object.keys(event.results).length > 0 && (
-            <div className="mb-2">
-              <span className="text-gray-400">results: </span>
-              <pre className="mt-0.5 overflow-x-auto rounded bg-white p-2 text-gray-700 border border-gray-200">
-                {JSON.stringify(event.results, null, 2)}
-              </pre>
-            </div>
-          )}
-          {event.performance && Object.keys(event.performance).length > 0 && (
-            <div>
-              <span className="text-gray-400">performance: </span>
-              <pre className="mt-0.5 overflow-x-auto rounded bg-white p-2 text-gray-700 border border-gray-200">
-                {JSON.stringify(event.performance, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // -- Helpers --
@@ -122,8 +45,92 @@ function formatTime(iso: string): string {
 }
 
 function shortenComponentId(id: string): string {
-  // keboola.ex-db-mysql -> ex-db-mysql
   return id.replace(/^keboola\./, '');
+}
+
+// Highlight search match in text
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query || query.length < 2) return text;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx < 0) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-200 text-yellow-900 rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
+// -- Single event row --
+
+function EventRow({ event, search }: { event: KeboolaEvent; search: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const style = TYPE_STYLES[event.type] ?? TYPE_STYLES.info!;
+  const isStorage = isStorageEvent(event);
+  const message = event.message || event.event;
+
+  // Build detail object (skip empty fields)
+  const detail: Record<string, unknown> = {};
+  if (event.description) detail.description = event.description;
+  if (event.event) detail.event = event.event;
+  if (Object.keys(event.params).length > 0) detail.params = event.params;
+  if (Object.keys(event.results).length > 0) detail.results = event.results;
+  if (event.performance && Object.keys(event.performance).length > 0) detail.performance = event.performance;
+  if (event.token) detail.token = event.token;
+  if (event.context) detail.context = event.context;
+
+  return (
+    <div className={`border-b border-gray-100 last:border-b-0 ${
+      event.type === 'error' ? 'bg-red-50/30' :
+      isStorage ? 'bg-neutral-50/50' : ''
+    }`}>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-start gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-50/80 transition-colors cursor-pointer"
+      >
+        {/* Timestamp */}
+        <span className="shrink-0 font-mono text-gray-400 tabular-nums" title={event.created}>
+          {formatTime(event.created)}
+        </span>
+
+        {/* Type badge */}
+        <span className={`shrink-0 rounded px-1 py-0.5 font-mono text-[10px] font-semibold ${style.bg} ${style.text}`}>
+          {style.label}
+        </span>
+
+        {/* Component */}
+        {event.component && (
+          <span className={`shrink-0 truncate font-mono ${isStorage ? 'text-neutral-300' : 'text-gray-400'}`} style={{ maxWidth: '180px' }} title={event.component}>
+            {shortenComponentId(event.component)}
+          </span>
+        )}
+
+        {/* Message */}
+        <span className={`min-w-0 flex-1 font-mono ${
+          event.type === 'error' ? 'text-red-700' :
+          isStorage ? 'text-neutral-400' : 'text-gray-800'
+        }`}>
+          {highlightMatch(message, search)}
+        </span>
+
+        {/* Expand indicator */}
+        <span className={`shrink-0 text-[10px] text-gray-300 transition-transform ${expanded ? 'rotate-90' : ''}`}>
+          &#9656;
+        </span>
+      </button>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-gray-100 bg-gray-50 px-3 py-2">
+          <pre className="overflow-x-auto font-mono text-xs text-gray-600 whitespace-pre-wrap">
+            {JSON.stringify(detail, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // -- Main component --
@@ -149,13 +156,31 @@ export function EventsViewer({
 }: EventsViewerProps) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'component' | 'storage'>('all');
   const [copied, setCopied] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Ctrl+F / Cmd+F focuses search
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const filtered = useMemo(() => {
     let result = events;
     if (typeFilter) {
       result = result.filter((e) => e.type === typeFilter);
+    }
+    if (sourceFilter === 'storage') {
+      result = result.filter(isStorageEvent);
+    } else if (sourceFilter === 'component') {
+      result = result.filter((e) => !isStorageEvent(e));
     }
     if (search) {
       const q = search.toLowerCase();
@@ -168,7 +193,7 @@ export function EventsViewer({
       );
     }
     return result;
-  }, [events, search, typeFilter]);
+  }, [events, search, typeFilter, sourceFilter]);
 
   const handleCopyAll = useCallback(() => {
     const text = filtered.map(eventToText).join('\n');
@@ -191,8 +216,14 @@ export function EventsViewer({
   // Count by type
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
-    for (const e of events) c[e.type] = (c[e.type] ?? 0) + 1;
-    return c;
+    let storageCount = 0;
+    let componentCount = 0;
+    for (const e of events) {
+      c[e.type] = (c[e.type] ?? 0) + 1;
+      if (isStorageEvent(e)) storageCount++;
+      else componentCount++;
+    }
+    return { ...c, _storage: storageCount, _component: componentCount } as Record<string, number>;
   }, [events]);
 
   return (
@@ -201,11 +232,11 @@ export function EventsViewer({
       <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-3 py-2">
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-          <span className="text-xs text-gray-400">{filtered.length} events</span>
+          <span className="text-xs text-gray-400">{filtered.length}</span>
 
           {/* Type filter pills */}
-          <div className="flex items-center gap-1">
-            {Object.entries(TYPE_STYLES).map(([type, style]) => {
+          <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
+            {Object.entries(TYPE_STYLES).map(([type, s]) => {
               const count = counts[type] ?? 0;
               if (count === 0) return null;
               const active = typeFilter === type;
@@ -215,13 +246,38 @@ export function EventsViewer({
                   type="button"
                   onClick={() => setTypeFilter(active ? null : type)}
                   className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
-                    active ? `${style.bg} ${style.text} ring-1 ring-current` : 'text-gray-400 hover:text-gray-600'
+                    active ? `${s.bg} ${s.text} ring-1 ring-current` : 'text-gray-400 hover:text-gray-600'
                   }`}
+                  title={`${s.label}: ${count} events`}
                 >
-                  {style.label} {count}
+                  {s.label} {count}
                 </button>
               );
             })}
+          </div>
+
+          {/* Source filter */}
+          <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
+            <button
+              type="button"
+              onClick={() => setSourceFilter(sourceFilter === 'component' ? 'all' : 'component')}
+              className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                sourceFilter === 'component' ? 'bg-purple-50 text-purple-600 ring-1 ring-purple-300' : 'text-gray-400 hover:text-gray-600'
+              }`}
+              title="Component events only"
+            >
+              Component {counts._component}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSourceFilter(sourceFilter === 'storage' ? 'all' : 'storage')}
+              className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                sourceFilter === 'storage' ? 'bg-neutral-100 text-neutral-600 ring-1 ring-neutral-300' : 'text-gray-400 hover:text-gray-600'
+              }`}
+              title="Storage events only"
+            >
+              Storage {counts._storage}
+            </button>
           </div>
         </div>
 
@@ -238,26 +294,35 @@ export function EventsViewer({
             onClick={handleDownload}
             className="rounded px-2 py-1 text-[10px] text-gray-500 hover:bg-gray-100 transition-colors"
           >
-            Download .log
+            .log
           </button>
         </div>
       </div>
 
       {/* Search */}
       {showSearch && (
-        <div className="border-b border-gray-100 px-3 py-1.5">
+        <div className="border-b border-gray-100 px-3 py-1.5 flex items-center gap-2">
+          <kbd className="rounded border border-gray-200 px-1 py-0.5 text-[9px] text-gray-400">
+            {navigator.platform.includes('Mac') ? '\u2318' : 'Ctrl'}F
+          </kbd>
           <input
+            ref={searchRef}
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search events... (message, component, params)"
+            placeholder="Search events..."
             className="w-full bg-transparent text-xs text-gray-700 outline-none placeholder:text-gray-300"
           />
+          {search && (
+            <button type="button" onClick={() => setSearch('')} className="text-gray-300 hover:text-gray-500 text-xs">
+              &#10005;
+            </button>
+          )}
         </div>
       )}
 
       {/* Event stream */}
-      <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight }}>
+      <div className="overflow-y-auto" style={{ maxHeight }}>
         {isLoading && events.length === 0 && (
           <div className="px-4 py-8 text-center text-xs text-gray-400">Loading events...</div>
         )}
@@ -271,7 +336,7 @@ export function EventsViewer({
         )}
 
         {filtered.map((event) => (
-          <EventRow key={event.uuid ?? event.id ?? event.created} event={event} />
+          <EventRow key={event.uuid ?? event.id ?? event.created} event={event} search={search} />
         ))}
       </div>
     </div>
