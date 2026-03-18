@@ -48,7 +48,7 @@ export function JobsPage() {
   });
   const { getComponentName, getComponentType, getComponentIcon, getConfigName } = useComponentLookup();
 
-  const totalCredits = (jobs ?? []).reduce((sum, j) => sum + calculateJobCredits(j.durationSeconds, getContainerSize((j as Record<string, unknown>).metrics)), 0);
+  const totalCredits = (jobs ?? []).reduce((sum, j) => sum + calculateJobCredits(j.durationSeconds, getContainerSize((j as Record<string, unknown>).metrics), j.component), 0);
 
   return (
     <div>
@@ -143,7 +143,7 @@ export function JobsPage() {
                         {formatDuration(job.durationSeconds)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-mono text-gray-600">
-                        {formatCredits(calculateJobCredits(job.durationSeconds, getContainerSize((job as Record<string, unknown>).metrics)))}
+                        {formatCredits(calculateJobCredits(job.durationSeconds, getContainerSize((job as Record<string, unknown>).metrics), job.component))}
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-sm text-gray-600">{formatRelativeTime(job.createdTime)}</p>

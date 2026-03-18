@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatDate } from '@/lib/formatters';
 import { useJob } from '@/hooks/useJobs';
+import { calculateJobCredits, formatCredits, getContainerSize } from '@/config/credits';
 
 function formatDuration(seconds: number | null): string {
   if (seconds == null) return '-';
@@ -90,6 +91,20 @@ export function JobDetailPage() {
         <div className="rounded-lg border border-gray-200 bg-white px-4 py-3">
           <p className="text-xs text-gray-500">Duration</p>
           <p className="text-sm font-semibold">{formatDuration(job.durationSeconds)}</p>
+        </div>
+      </div>
+
+      {/* Credits */}
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-3">
+          <p className="text-xs text-gray-500">Credits consumed</p>
+          <p className="text-lg font-semibold text-blue-700">
+            {formatCredits(calculateJobCredits(job.durationSeconds, getContainerSize((job as Record<string, unknown>).metrics), job.component))}
+          </p>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-3">
+          <p className="text-xs text-gray-500">Backend size</p>
+          <p className="text-sm font-semibold">{getContainerSize((job as Record<string, unknown>).metrics)}</p>
         </div>
       </div>
 
