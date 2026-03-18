@@ -42,6 +42,31 @@ Figma source: "Product Design System" (file key `VVjvQJQTMcFPDkWqB0Bf39TD`).
 
 **Usage**: always use design system tokens via Tailwind classes (`bg-green-500`, `text-neutral-900`, `shadow-card`, `rounded-lg`) or TS imports from `design-tokens.ts`. Never hardcode hex colors or font sizes in components.
 
+## Transformation Editor
+
+SQL transformations have a structured code editor in `src/components/TransformationBlocks.tsx`.
+
+**Data model**: `parameters.blocks[]` — each block is a "phase" containing `codes[]` — each code has `name` and `script: string[]` (array of SQL statements, one per element).
+
+**Key components**:
+- `TransformationBlocks` — phase/block tree with collapsible UI, edit/add/delete/rename/disable
+- `SqlEditor` (`src/components/SqlEditor.tsx`) — CodeMirror 6 wrapper, lazy-loaded (127KB gzip chunk)
+- `MappingEditor` — collapsible input/output mapping with item count badges
+
+**SQL autocomplete** (two sources):
+- Input mapping destinations + their storage columns (unquoted: `FROM csob_statements`)
+- All storage tables for direct query (quoted: `FROM "in.c-bucket.table"`)
+
+**Disable mechanism** — uses SQL line comments (no extra config keys, strict schema):
+- Disable: each statement wrapped in `-- [DISABLED BY KBC-UI]\n-- ...` comments. Runner sees NOP.
+- Output mappings: embedded as `-- [KBC-UI-OUTPUT] {"source":"x","destination":"y"}` in the disabled script. Removed from `storage.output.tables` on disable, restored on re-enable.
+- Enable: strips comment markers, restores output mappings from embedded JSON.
+- Impact analysis: `analyzeDisableImpact()` detects created tables (CREATE TABLE), dependent blocks (FROM/JOIN), and affected output mappings. Shows confirmation modal.
+
+**Statement splitting**: `splitStatements()` splits SQL by `;` respecting quotes, comments. Each element in `script[]` must be a single statement — Snowflake rejects multi-statement execution.
+
+**Output mapping suggestions**: `extractCreatedTables()` parses CREATE TABLE from all SQL blocks and offers them as autocomplete in the output mapping "Source" field.
+
 ## Architecture Rules
 
 1. **No Flux, no Immutable.js** - ever. TanStack Query for server state, Zustand for UI state.

@@ -34,6 +34,33 @@ You can either:
 
 `projects.secret.json` contains Storage API tokens and is gitignored. Never commit this file. The Management API token used during setup is never written to disk - it is only held in memory for the duration of the setup session.
 
+## Features
+
+### Multi-Project Support
+Connect 20-50 projects across organizations. Switch projects instantly with full cache isolation. Global search (Cmd+K) across all projects' buckets, components, and configs. Org dashboard with aggregate stats.
+
+### Transformation Editor
+Full-featured SQL editor for Snowflake, Python, and other transformation types:
+- **Phase/Block structure** — code organized into phases and blocks, matching the Keboola execution model
+- **SQL syntax highlighting** — CodeMirror 6 with one-dark theme, bracket matching, line numbers
+- **Table autocomplete** — suggests input mapping aliases, storage tables (direct query), and columns
+- **Inline editing** — edit SQL directly in each block with Save/Cancel
+- **Disable/Enable blocks** — temporarily skip blocks during execution without deleting code. Impact analysis shows which tables won't be created, which blocks will fail, and which output mappings are affected. Disabled output mappings are stored and automatically restored on re-enable.
+- **Add/Remove/Rename** — create new phases and blocks, delete or rename existing ones
+- **Copy All SQL** — copies all active (non-disabled) SQL to clipboard
+
+### Flow Builder
+Visual DAG editor for orchestration flows using @xyflow/react with automatic ELK layout. Add/remove phases and tasks, export as Mermaid or text for AI context.
+
+### Schema-Driven Config Editor
+Generic JSON Schema to form renderer for all component configurations. Supports nested objects, arrays, enums, passwords, and toggles between form and raw JSON views.
+
+### Storage Browser
+Browse buckets and tables with metadata, column details, data preview. Filter by stage (in/out), linked/shared status. Shared buckets show source project with one-click navigation.
+
+### Design System
+Keboola Product Design System from Figma with 10 color palettes, Inter typography, and component tokens. Toggle between default and branded theme at runtime.
+
 ## Available Pages
 
 | Page | URL | Description |
