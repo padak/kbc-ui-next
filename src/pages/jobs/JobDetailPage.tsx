@@ -1,6 +1,6 @@
 // file: pages/jobs/JobDetailPage.tsx
-// Compact job detail: condensed header, events + result side by side.
-// Component and config names are clickable links. Fits on one screen.
+// Job detail with 4 switchable layout variants for A/B testing.
+// Users can switch and vote. Choice persists in localStorage.
 // Used by: App.tsx route /jobs/:jobId.
 // Data from: hooks/useJobs.ts, hooks/useEvents.ts.
 
@@ -13,6 +13,40 @@ import { useJobEvents } from '@/hooks/useEvents';
 import { EventsViewer } from '@/components/EventsViewer';
 import { calculateJobCredits, formatCredits, getContainerSize } from '@/config/credits';
 
+// -- Layout persistence --
+
+const LAYOUT_KEY = 'kbc-job-layout';
+const VOTES_KEY = 'kbc-job-layout-votes';
+
+type LayoutId = 'classic' | 'split' | 'terminal' | 'dashboard';
+
+const LAYOUTS: { id: LayoutId; label: string; desc: string }[] = [
+  { id: 'classic', label: 'Classic', desc: 'Cards + stacked sections' },
+  { id: 'split', label: 'Split', desc: 'Events left, result right' },
+  { id: 'terminal', label: 'Terminal', desc: 'Events-first, minimal chrome' },
+  { id: 'dashboard', label: 'Dashboard', desc: 'Grid cards overview' },
+];
+
+function getSavedLayout(): LayoutId {
+  try { return (localStorage.getItem(LAYOUT_KEY) as LayoutId) ?? 'classic'; } catch { return 'classic'; }
+}
+
+function saveLayout(id: LayoutId) {
+  try { localStorage.setItem(LAYOUT_KEY, id); } catch { /* */ }
+}
+
+function getVotes(): Record<string, number> {
+  try { return JSON.parse(localStorage.getItem(VOTES_KEY) ?? '{}'); } catch { return {}; }
+}
+
+function castVote(id: LayoutId) {
+  const votes = getVotes();
+  votes[id] = (votes[id] ?? 0) + 1;
+  try { localStorage.setItem(VOTES_KEY, JSON.stringify(votes)); } catch { /* */ }
+}
+
+// -- Helpers --
+
 function formatDuration(seconds: number | null): string {
   if (seconds == null) return '-';
   if (seconds < 60) return `${seconds}s`;
@@ -24,33 +58,83 @@ function formatDuration(seconds: number | null): string {
   return `${hours}h ${remainingMinutes}m ${remainingSeconds}s`;
 }
 
+// -- Main page --
+
 export function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const { data: job, isLoading, error } = useJob(jobId ?? '');
   const { data: jobEvents, isLoading: eventsLoading, error: eventsError } = useJobEvents(job?.runId);
+  const [layout, setLayout] = useState<LayoutId>(getSavedLayout);
+  const [voted, setVoted] = useState(false);
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center py-12 text-gray-400">Loading job...</div>;
+  function switchLayout(id: LayoutId) {
+    setLayout(id);
+    saveLayout(id);
   }
 
-  if (error) {
-    return <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error.message}</div>;
+  function handleVote() {
+    castVote(layout);
+    setVoted(true);
+    setTimeout(() => setVoted(false), 2000);
   }
 
+  if (isLoading) return <div className="flex items-center justify-center py-12 text-gray-400">Loading job...</div>;
+  if (error) return <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error.message}</div>;
   if (!job) return null;
 
-  const credits = formatCredits(calculateJobCredits(job.durationSeconds, getContainerSize((job as Record<string, unknown>).metrics), job.component));
   const result = job.result as Record<string, unknown> | null;
+  const credits = formatCredits(calculateJobCredits(job.durationSeconds, getContainerSize((job as Record<string, unknown>).metrics), job.component));
+  const backendSize = getContainerSize((job as Record<string, unknown>).metrics);
+  const isLive = job.status === 'processing';
+  const eventsProps = {
+    events: jobEvents ?? [],
+    isLoading: eventsLoading,
+    error: eventsError instanceof Error ? eventsError : null,
+    title: `Events${isLive ? ' (live)' : ''}`,
+    emptyMessage: 'No events for this job.',
+  };
 
   return (
     <div>
-      {/* Compact header — one row */}
+      {/* Header — shared by all layouts */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-gray-900">Job {job.id}</h1>
           <StatusBadge status={job.status} />
+
+          {/* Layout switcher */}
+          <div className="flex items-center gap-0.5 rounded-lg border border-gray-200 bg-gray-50 p-0.5 ml-3">
+            {LAYOUTS.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => switchLayout(l.id)}
+                className={`rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${
+                  layout === l.id
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+                title={l.desc}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Vote button */}
+          <button
+            type="button"
+            onClick={handleVote}
+            className={`rounded-full px-2 py-0.5 text-[10px] transition-colors ${
+              voted ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+            }`}
+            title={`Vote for "${LAYOUTS.find((l) => l.id === layout)?.label}" layout`}
+          >
+            {voted ? 'Voted!' : '\u2764 Vote'}
+          </button>
         </div>
+
         <button
           onClick={() => navigate('/jobs')}
           className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
@@ -59,155 +143,122 @@ export function JobDetailPage() {
         </button>
       </div>
 
-      {/* Condensed info — single row of key-value pairs */}
-      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm">
-        <div>
-          <span className="text-gray-400">Component </span>
-          <Link
-            to={`/components/${encodeURIComponent(job.component)}`}
-            className="font-medium text-blue-600 hover:text-blue-800"
-          >
-            {job.component}
-          </Link>
-        </div>
-        <div>
-          <span className="text-gray-400">Config </span>
-          <Link
-            to={`/components/${encodeURIComponent(job.component)}/${job.config}`}
-            className="font-medium text-blue-600 hover:text-blue-800"
-          >
-            {job.config}
-          </Link>
-        </div>
-        <div>
-          <span className="text-gray-400">Duration </span>
-          <span className="font-semibold">{formatDuration(job.durationSeconds)}</span>
-        </div>
-        <div>
-          <span className="text-gray-400">Credits </span>
-          <span className="font-semibold text-blue-700">{credits}</span>
-        </div>
-        <div>
-          <span className="text-gray-400">Size </span>
-          <span className="font-medium">{getContainerSize((job as Record<string, unknown>).metrics)}</span>
-        </div>
-        <div>
-          <span className="text-gray-400">Mode </span>
-          <span className="font-medium">{job.mode}</span>
-        </div>
-        <div>
-          <span className="text-gray-400">By </span>
-          <span className="font-medium">{job.token.description}</span>
-        </div>
-        <div className="text-gray-400">
-          {job.startTime ? formatDate(job.startTime) : formatDate(job.createdTime)}
-          {job.endTime && ` — ${formatDate(job.endTime)}`}
-        </div>
+      {/* Render selected layout */}
+      {layout === 'classic' && (
+        <LayoutClassic job={job} result={result} credits={credits} backendSize={backendSize} eventsProps={eventsProps} />
+      )}
+      {layout === 'split' && (
+        <LayoutSplit job={job} result={result} credits={credits} backendSize={backendSize} eventsProps={eventsProps} />
+      )}
+      {layout === 'terminal' && (
+        <LayoutTerminal job={job} result={result} credits={credits} backendSize={backendSize} eventsProps={eventsProps} />
+      )}
+      {layout === 'dashboard' && (
+        <LayoutDashboard job={job} result={result} credits={credits} backendSize={backendSize} eventsProps={eventsProps} />
+      )}
+    </div>
+  );
+}
+
+// -- Shared types --
+
+type LayoutProps = {
+  job: ReturnType<typeof useJob>['data'] & {};
+  result: Record<string, unknown> | null;
+  credits: string;
+  backendSize: string;
+  eventsProps: {
+    events: import('@/api/events').KeboolaEvent[];
+    isLoading: boolean;
+    error: Error | null;
+    title: string;
+    emptyMessage: string;
+  };
+};
+
+// -- Shared info bar component --
+
+function InfoBar({ job, credits, backendSize }: { job: LayoutProps['job']; credits: string; backendSize: string }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
+      <div>
+        <span className="text-gray-400">Component </span>
+        <Link to={`/components/${encodeURIComponent(job.component)}`} className="font-medium text-blue-600 hover:text-blue-800">
+          {job.component}
+        </Link>
       </div>
-
-      {/* Two-column layout: Events (left) + Result (right) */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Events — takes 2/3 */}
-        <div className="lg:col-span-2">
-          <EventsViewer
-            events={jobEvents ?? []}
-            isLoading={eventsLoading}
-            error={eventsError instanceof Error ? eventsError : null}
-            title={`Events${job.status === 'processing' ? ' (live)' : ''}`}
-            maxHeight="calc(100vh - 250px)"
-            emptyMessage="No events for this job."
-          />
-        </div>
-
-        {/* Result — takes 1/3 */}
-        <div>
-          <JobResult result={result} />
-        </div>
+      <div>
+        <span className="text-gray-400">Config </span>
+        <Link to={`/components/${encodeURIComponent(job.component)}/${job.config}`} className="font-medium text-blue-600 hover:text-blue-800">
+          {job.config}
+        </Link>
+      </div>
+      <div><span className="text-gray-400">Duration </span><span className="font-semibold">{formatDuration(job.durationSeconds)}</span></div>
+      <div><span className="text-gray-400">Credits </span><span className="font-semibold text-blue-700">{credits}</span></div>
+      <div><span className="text-gray-400">Size </span><span className="font-medium">{backendSize}</span></div>
+      <div><span className="text-gray-400">By </span><span className="font-medium">{job.token.description}</span></div>
+      <div className="text-gray-400 text-xs">
+        {job.startTime ? formatDate(job.startTime) : formatDate(job.createdTime)}
+        {job.endTime && ` — ${formatDate(job.endTime)}`}
       </div>
     </div>
   );
 }
 
-// -- Structured job result viewer (compact, sidebar-style) --
+// -- Result sidebar component --
 
-function JobResult({ result }: { result: Record<string, unknown> | null }) {
+function ResultPanel({ result, maxHeight }: { result: Record<string, unknown> | null; maxHeight?: string }) {
   const [showRaw, setShowRaw] = useState(false);
 
   if (!result || Object.keys(result).length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-gray-200 px-4 py-6 text-center text-xs text-gray-400">
-        No result data.
-      </div>
-    );
+    return <div className="rounded-lg border border-dashed border-gray-200 px-4 py-6 text-center text-xs text-gray-400">No result.</div>;
   }
 
   const message = result.message as string | undefined;
   const configVersion = result.configVersion as string | undefined;
-  const output = result.output as Record<string, unknown> | undefined;
-  const outputTables = (output?.tables as Array<Record<string, unknown>>) ?? [];
-  const input = result.input as Record<string, unknown> | undefined;
-  const inputTables = (input?.tables as Array<Record<string, unknown>>) ?? [];
+  const outputTables = ((result.output as Record<string, unknown>)?.tables as Array<Record<string, unknown>>) ?? [];
+  const inputTables = ((result.input as Record<string, unknown>)?.tables as Array<Record<string, unknown>>) ?? [];
   const images = (result.images as Array<Record<string, unknown>>) ?? [];
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-3 py-2">
         <h3 className="text-sm font-semibold text-gray-900">Result</h3>
-        <button
-          type="button"
-          onClick={() => setShowRaw(!showRaw)}
-          className="rounded px-2 py-0.5 text-[10px] text-gray-500 hover:bg-gray-100 transition-colors"
-        >
+        <button type="button" onClick={() => setShowRaw(!showRaw)} className="rounded px-2 py-0.5 text-[10px] text-gray-500 hover:bg-gray-100">
           {showRaw ? 'Structured' : 'JSON'}
         </button>
       </div>
-
       {showRaw ? (
-        <pre className="overflow-auto bg-gray-900 p-3 text-xs text-green-400" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+        <pre className="overflow-auto bg-gray-900 p-3 text-xs text-green-400" style={{ maxHeight: maxHeight ?? '400px' }}>
           {JSON.stringify(result, null, 2)}
         </pre>
       ) : (
-        <div className="divide-y divide-gray-100">
-          {/* Message */}
+        <div className="divide-y divide-gray-100" style={{ maxHeight: maxHeight ?? '400px', overflowY: 'auto' }}>
           {message && (
             <div className="px-3 py-2">
               <p className="text-sm text-gray-800">{message}</p>
               {configVersion && <p className="text-[10px] text-gray-400">v{configVersion}</p>}
             </div>
           )}
-
-          {/* Output tables */}
           {outputTables.length > 0 && (
             <div className="px-3 py-2">
-              <p className="mb-1.5 text-[10px] font-semibold uppercase text-gray-400">
-                Output <span className="rounded-full bg-green-50 px-1.5 py-0.5 text-green-600 normal-case">{outputTables.length}</span>
-              </p>
-              {outputTables.map((table, i) => (
-                <TableResultRow key={i} table={table} stage="out" />
-              ))}
+              <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">Output <span className="text-green-600">{outputTables.length}</span></p>
+              {outputTables.map((t, i) => <TableRow key={i} table={t} stage="out" />)}
             </div>
           )}
-
-          {/* Input tables */}
           {inputTables.length > 0 && (
             <div className="px-3 py-2">
-              <p className="mb-1.5 text-[10px] font-semibold uppercase text-gray-400">
-                Input <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-blue-600 normal-case">{inputTables.length}</span>
-              </p>
-              {inputTables.map((table, i) => (
-                <TableResultRow key={i} table={table} stage="in" />
-              ))}
+              <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">Input <span className="text-blue-600">{inputTables.length}</span></p>
+              {inputTables.map((t, i) => <TableRow key={i} table={t} stage="in" />)}
             </div>
           )}
-
-          {/* Images */}
-          {images.length > 0 && (
+          {images.length > 0 && images.some((img) => img.id || img.digests) && (
             <div className="px-3 py-2">
-              <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">Image</p>
-              {images.map((img, i) => (
-                <p key={i} className="truncate font-mono text-[10px] text-gray-500" title={img.id as string}>{img.id as string}</p>
-              ))}
+              <p className="text-[10px] font-semibold uppercase text-gray-400">Image</p>
+              {images.map((img, i) => {
+                const label = (img.id as string) || ((img.digests as string[])?.join(', ')) || '';
+                return label ? <p key={i} className="truncate font-mono text-[10px] text-gray-500" title={label}>{label}</p> : null;
+              })}
             </div>
           )}
         </div>
@@ -216,41 +267,192 @@ function JobResult({ result }: { result: Record<string, unknown> | null }) {
   );
 }
 
-// -- Single table row in result --
-
-function TableResultRow({ table, stage }: { table: Record<string, unknown>; stage: 'in' | 'out' }) {
-  const [expanded, setExpanded] = useState(false);
-  const id = table.id as string ?? '';
-  const name = table.name as string ?? table.displayName as string ?? '';
-  const columns = (table.columns as Array<Record<string, unknown>>) ?? [];
-
+function TableRow({ table, stage }: { table: Record<string, unknown>; stage: 'in' | 'out' }) {
+  const [exp, setExp] = useState(false);
+  const name = (table.name ?? table.displayName ?? table.id ?? '') as string;
+  const cols = (table.columns as Array<Record<string, unknown>>) ?? [];
   return (
     <div className="mb-0.5">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-1.5 rounded py-0.5 text-left hover:bg-gray-50 transition-colors"
-      >
-        <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-medium ${
-          stage === 'out' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'
-        }`}>
-          {stage}
-        </span>
-        <span className="font-mono text-xs text-gray-800">{name || id}</span>
-        {columns.length > 0 && (
-          <span className="text-[10px] text-gray-400">{columns.length}c</span>
-        )}
-        <span className={`ml-auto text-[9px] text-gray-300 transition-transform ${expanded ? 'rotate-90' : ''}`}>&#9656;</span>
+      <button type="button" onClick={() => setExp(!exp)} className="flex w-full items-center gap-1.5 rounded py-0.5 text-left hover:bg-gray-50">
+        <span className={`rounded px-1 py-0.5 text-[9px] font-medium ${stage === 'out' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>{stage}</span>
+        <span className="font-mono text-xs text-gray-800">{name}</span>
+        {cols.length > 0 && <span className="text-[10px] text-gray-400">{cols.length}c</span>}
+        <span className={`ml-auto text-[9px] text-gray-300 ${exp ? 'rotate-90' : ''}`}>&#9656;</span>
       </button>
-      {expanded && columns.length > 0 && (
+      {exp && cols.length > 0 && (
         <div className="ml-5 mb-1 flex flex-wrap gap-0.5">
-          {columns.map((col, i) => (
-            <span key={i} className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[9px] text-gray-500">
-              {col.name as string}
-            </span>
-          ))}
+          {cols.map((c, i) => <span key={i} className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[9px] text-gray-500">{c.name as string}</span>)}
         </div>
       )}
+    </div>
+  );
+}
+
+// ==========================================================================
+// Layout A: Classic — cards + stacked sections (original layout)
+// ==========================================================================
+
+function LayoutClassic({ job, result, credits, eventsProps }: LayoutProps) {
+  return (
+    <>
+      {/* Stats cards */}
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-2.5">
+          <p className="text-xs text-gray-500">Component</p>
+          <Link to={`/components/${encodeURIComponent(job.component)}`} className="text-sm font-semibold text-blue-600 hover:text-blue-800">{job.component}</Link>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-2.5">
+          <p className="text-xs text-gray-500">Config</p>
+          <Link to={`/components/${encodeURIComponent(job.component)}/${job.config}`} className="text-sm font-semibold text-blue-600 hover:text-blue-800">{job.config}</Link>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-2.5">
+          <p className="text-xs text-gray-500">Duration</p>
+          <p className="text-sm font-semibold">{formatDuration(job.durationSeconds)}</p>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-2.5">
+          <p className="text-xs text-gray-500">Credits</p>
+          <p className="text-sm font-semibold text-blue-700">{credits}</p>
+        </div>
+      </div>
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-2.5">
+          <p className="text-xs text-gray-500">Created</p>
+          <p className="text-xs font-semibold">{formatDate(job.createdTime)}</p>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-2.5">
+          <p className="text-xs text-gray-500">Start</p>
+          <p className="text-xs font-semibold">{job.startTime ? formatDate(job.startTime) : '-'}</p>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-2.5">
+          <p className="text-xs text-gray-500">End</p>
+          <p className="text-xs font-semibold">{job.endTime ? formatDate(job.endTime) : '-'}</p>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-2.5">
+          <p className="text-xs text-gray-500">By</p>
+          <p className="text-xs font-semibold">{job.token.description}</p>
+        </div>
+      </div>
+
+      {/* Result */}
+      <div className="mb-4">
+        <ResultPanel result={result} maxHeight="300px" />
+      </div>
+
+      {/* Events */}
+      <EventsViewer {...eventsProps} maxHeight="400px" />
+    </>
+  );
+}
+
+// ==========================================================================
+// Layout B: Split — events left 2/3, result right 1/3
+// ==========================================================================
+
+function LayoutSplit({ job, result, credits, backendSize, eventsProps }: LayoutProps) {
+  return (
+    <>
+      <div className="mb-4">
+        <InfoBar job={job} credits={credits} backendSize={backendSize} />
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <EventsViewer {...eventsProps} maxHeight="calc(100vh - 240px)" />
+        </div>
+        <div>
+          <ResultPanel result={result} maxHeight="calc(100vh - 280px)" />
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ==========================================================================
+// Layout C: Terminal — events-first, minimal chrome, full width
+// ==========================================================================
+
+function LayoutTerminal({ job, result, credits, backendSize, eventsProps }: LayoutProps) {
+  const outputTables = ((result?.output as Record<string, unknown>)?.tables as Array<Record<string, unknown>>) ?? [];
+  const message = result?.message as string | undefined;
+
+  return (
+    <>
+      {/* Ultra-compact info line */}
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-gray-500">
+        <Link to={`/components/${encodeURIComponent(job.component)}`} className="text-blue-600 hover:text-blue-800">{job.component}</Link>
+        <span>/</span>
+        <Link to={`/components/${encodeURIComponent(job.component)}/${job.config}`} className="text-blue-600 hover:text-blue-800">{job.config}</Link>
+        <span className="text-gray-300">|</span>
+        <span>{formatDuration(job.durationSeconds)}</span>
+        <span className="text-gray-300">|</span>
+        <span className="text-blue-600">{credits} credits</span>
+        <span className="text-gray-300">|</span>
+        <span>{backendSize}</span>
+        <span className="text-gray-300">|</span>
+        <span>{job.token.description}</span>
+        {message && (
+          <>
+            <span className="text-gray-300">|</span>
+            <span className="text-gray-700">{message}</span>
+          </>
+        )}
+        {outputTables.length > 0 && (
+          <>
+            <span className="text-gray-300">|</span>
+            <span className="text-green-600">{outputTables.length} output tables</span>
+          </>
+        )}
+      </div>
+
+      {/* Events — full width, maximum height */}
+      <EventsViewer {...eventsProps} maxHeight="calc(100vh - 180px)" />
+    </>
+  );
+}
+
+// ==========================================================================
+// Layout D: Dashboard — grid cards with everything visible
+// ==========================================================================
+
+function LayoutDashboard({ job, result, credits, backendSize, eventsProps }: LayoutProps) {
+  return (
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
+      {/* Row 1: 4 stat cards */}
+      <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-center">
+        <p className="text-3xl font-bold">{formatDuration(job.durationSeconds)}</p>
+        <p className="text-xs text-gray-500">Duration</p>
+      </div>
+      <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-center">
+        <p className="text-3xl font-bold text-blue-700">{credits}</p>
+        <p className="text-xs text-gray-500">Credits</p>
+      </div>
+      <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-center">
+        <p className="text-3xl font-bold">{(eventsProps.events ?? []).length}</p>
+        <p className="text-xs text-gray-500">Events</p>
+      </div>
+      <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-center">
+        <p className="text-3xl font-bold">{backendSize}</p>
+        <p className="text-xs text-gray-500">Backend Size</p>
+      </div>
+
+      {/* Row 2: Info + Result */}
+      <div className="lg:col-span-2 rounded-lg border border-gray-200 bg-white px-4 py-3">
+        <dl className="space-y-1 text-sm">
+          <div className="flex justify-between"><dt className="text-gray-400">Component</dt><dd><Link to={`/components/${encodeURIComponent(job.component)}`} className="font-medium text-blue-600">{job.component}</Link></dd></div>
+          <div className="flex justify-between"><dt className="text-gray-400">Config</dt><dd><Link to={`/components/${encodeURIComponent(job.component)}/${job.config}`} className="font-medium text-blue-600">{job.config}</Link></dd></div>
+          <div className="flex justify-between"><dt className="text-gray-400">Mode</dt><dd className="font-medium">{job.mode}</dd></div>
+          <div className="flex justify-between"><dt className="text-gray-400">By</dt><dd className="font-medium">{job.token.description}</dd></div>
+          <div className="flex justify-between"><dt className="text-gray-400">Created</dt><dd className="text-xs">{formatDate(job.createdTime)}</dd></div>
+          {job.endTime && <div className="flex justify-between"><dt className="text-gray-400">Finished</dt><dd className="text-xs">{formatDate(job.endTime)}</dd></div>}
+        </dl>
+      </div>
+      <div className="lg:col-span-2">
+        <ResultPanel result={result} maxHeight="200px" />
+      </div>
+
+      {/* Row 3: Events full width */}
+      <div className="lg:col-span-4">
+        <EventsViewer {...eventsProps} maxHeight="400px" />
+      </div>
     </div>
   );
 }
