@@ -46,11 +46,18 @@ function EditableText({ value, onSave, placeholder, className }: {
       <input
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') commit();
-          if (e.key === 'Escape') setDraft(null);
+        onBlur={() => {
+          // Delay to avoid conflict with Enter keydown
+          setTimeout(() => {
+            // Only commit if still in editing mode (draft not null)
+            if (draft !== null) commit();
+          }, 0);
         }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); commit(); }
+          if (e.key === 'Escape') { e.preventDefault(); setDraft(null); }
+        }}
+        onClick={(e) => e.stopPropagation()}
         className={`rounded border border-blue-400 bg-white px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 ${className ?? ''}`}
         autoFocus
       />
