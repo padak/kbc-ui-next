@@ -36,9 +36,10 @@ export function useUpdateConfiguration(componentId: string, configId: string) {
   return useMutation({
     mutationFn: (data: { name?: string; description?: string; configuration?: Record<string, unknown>; isDisabled?: boolean; changeDescription?: string }) =>
       componentsApi.updateConfiguration(componentId, configId, data),
-    onSuccess: () => {
+    onSuccess: (updatedConfig) => {
+      // Immediately update cache with API response (no stale flash)
+      queryClient.setQueryData(['components', componentId, 'configs', configId], updatedConfig);
       queryClient.invalidateQueries({ queryKey: ['components', componentId, 'configs'] });
-      queryClient.invalidateQueries({ queryKey: ['components', componentId, 'configs', configId] });
     },
   });
 }
