@@ -10,18 +10,60 @@ import { PageHeader } from '@/components/PageHeader';
 import { useTable, useTablePreview } from '@/hooks/useStorage';
 import { formatBytes, formatNumber, formatDate } from '@/lib/formatters';
 
+function CollapsibleSection({ title, count, defaultOpen = true, children }: {
+  title: string;
+  count?: number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="mb-6">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-900"
+      >
+        <svg
+          className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-90' : ''}`}
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+        </svg>
+        {title}
+        {count !== undefined && (
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">{count}</span>
+        )}
+      </button>
+      {open && children}
+    </div>
+  );
+}
+
 function DataPreview({ tableId, columns }: { tableId: string; columns: string[] }) {
   const [expanded, setExpanded] = useState(false);
   const { data, isLoading, error } = useTablePreview(expanded ? tableId : '');
 
-  // Parse response: API returns { rows: [{ col1: val1, ... }, ...] } or array directly
-  const rows = (() => {
+  // Parse response: API returns { rows: [ [ {columnName, value}, ... ], ... ] }
+  // Each row is an array of {columnName, value} pairs, not a flat object.
+  type Cell = { columnName: string; value: string | null };
+  const rawRows = (() => {
     if (!data) return [];
-    if (Array.isArray(data)) return data as Array<Record<string, unknown>>;
     const obj = data as Record<string, unknown>;
-    if (Array.isArray(obj.rows)) return obj.rows as Array<Record<string, unknown>>;
+    if (Array.isArray(obj.rows)) return obj.rows as Cell[][];
+    if (Array.isArray(data)) return data as Cell[][];
     return [];
   })();
+
+  // Convert to column-indexed records for easy rendering
+  const rows = rawRows.map((row) => {
+    const record: Record<string, string | null> = {};
+    for (const cell of row) {
+      record[cell.columnName] = cell.value;
+    }
+    return record;
+  });
 
   return (
     <div className="mb-6">
@@ -152,9 +194,9 @@ export function TableDetailPage() {
         </div>
       </div>
 
-      {/* Columns */}
-      <h2 className="mb-3 text-lg font-semibold text-gray-900">Columns</h2>
-      <div className="mb-6 overflow-x-auto rounded-lg border border-gray-200">
+      {/* Columns (collapsible) */}
+      <CollapsibleSection title="Columns" count={table.columns.length} defaultOpen={table.columns.length <= 20}>
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -178,6 +220,7 @@ export function TableDetailPage() {
           </tbody>
         </table>
       </div>
+      </CollapsibleSection>
 
       {/* Data Preview */}
       <DataPreview tableId={tableId ?? ''} columns={table.columns} />
