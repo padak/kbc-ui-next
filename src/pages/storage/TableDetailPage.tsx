@@ -227,8 +227,7 @@ export function TableDetailPage() {
 
       {/* Metadata */}
       {table.metadata.length > 0 && (
-        <>
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Metadata</h2>
+        <CollapsibleSection title="Metadata" count={table.metadata.length}>
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -251,7 +250,7 @@ export function TableDetailPage() {
               </tbody>
             </table>
           </div>
-        </>
+        </CollapsibleSection>
       )}
     </div>
   );
