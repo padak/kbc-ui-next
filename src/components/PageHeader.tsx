@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 
 type PageHeaderProps = {
   title: string;
-  description?: string;
+  description?: ReactNode;
   actions?: ReactNode;
 };
 
