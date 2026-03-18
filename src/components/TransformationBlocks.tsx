@@ -97,13 +97,16 @@ export function encodeOutputMappings(mappings: Array<{ source: string; destinati
 
 export function decodeOutputMappings(script: string[]): Array<{ source: string; destination: string }> {
   const results: Array<{ source: string; destination: string }> = [];
-  for (const line of script) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith(OUTPUT_MAPPING_MARKER.trim())) {
-      try {
-        const json = trimmed.slice(OUTPUT_MAPPING_MARKER.trim().length);
-        results.push(JSON.parse(json));
-      } catch { /* skip malformed */ }
+  // Script elements may contain multiple lines (\n), so split each element into lines
+  for (const element of script) {
+    for (const line of element.split('\n')) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith(OUTPUT_MAPPING_MARKER.trim())) {
+        try {
+          const json = trimmed.slice(OUTPUT_MAPPING_MARKER.trim().length);
+          results.push(JSON.parse(json));
+        } catch { /* skip malformed */ }
+      }
     }
   }
   return results;
