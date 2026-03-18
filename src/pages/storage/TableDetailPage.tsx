@@ -83,12 +83,12 @@ function DataPreview({ tableId, columns }: { tableId: string; columns: string[] 
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
+    <div className="max-h-[400px] overflow-auto rounded-lg border border-gray-200">
       <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+        <thead className="bg-gray-50 sticky top-0 z-10">
           <tr>
             {columns.map((col) => (
-              <th key={col} className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+              <th key={col} className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 bg-gray-50">
                 {col}
               </th>
             ))}
@@ -123,11 +123,30 @@ function DataPreview({ tableId, columns }: { tableId: string; columns: string[] 
 
 // -- Columns with sample values --
 
+// Compute basic column profile from sample data
+function profileColumn(values: Array<string | null | undefined>) {
+  const total = values.length;
+  const nullCount = values.filter((v) => v === null || v === undefined).length;
+  const nonNull = values.filter((v): v is string => v !== null && v !== undefined);
+  const distinct = new Set(nonNull).size;
+  const samples = nonNull.filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 5);
+
+  // Detect if numeric (all non-null values parse as numbers)
+  const nums = nonNull.map(Number).filter((n) => !isNaN(n));
+  const isNumeric = nonNull.length > 0 && nums.length === nonNull.length;
+  const min = isNumeric && nums.length > 0 ? Math.min(...nums) : null;
+  const max = isNumeric && nums.length > 0 ? Math.max(...nums) : null;
+
+  return { total, nullCount, distinct, samples, isNumeric, min, max };
+}
+
 function ColumnsWithSamples({ columns, primaryKey, sampleData }: {
   columns: string[];
   primaryKey: string[];
   sampleData: Array<Record<string, string | null>>;
 }) {
+  const hasData = sampleData.length > 0;
+
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200">
       <table className="min-w-full divide-y divide-gray-200">
@@ -136,17 +155,21 @@ function ColumnsWithSamples({ columns, primaryKey, sampleData }: {
             <th className="w-10 px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">#</th>
             <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Column</th>
             <th className="w-10 px-3 py-2 text-center text-xs font-medium uppercase text-gray-500">PK</th>
-            <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Sample Values</th>
+            {hasData && (
+              <>
+                <th className="w-16 px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Distinct</th>
+                <th className="w-16 px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Nulls</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                  Sample Values
+                </th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 bg-white">
           {columns.map((col, i) => {
-            // Collect up to 5 unique sample values for this column
-            const samples = sampleData
-              .map((row) => row[col])
-              .filter((v): v is string => v !== null && v !== undefined)
-              .filter((v, idx, arr) => arr.indexOf(v) === idx)
-              .slice(0, 5);
+            const values = sampleData.map((row) => row[col]);
+            const profile = hasData ? profileColumn(values) : null;
 
             return (
               <tr key={col} className="hover:bg-gray-50">
@@ -157,15 +180,41 @@ function ColumnsWithSamples({ columns, primaryKey, sampleData }: {
                     <span className="rounded bg-yellow-50 px-1.5 py-0.5 text-[10px] font-medium text-yellow-700">PK</span>
                   )}
                 </td>
-                <td className="max-w-md px-3 py-1.5 text-xs text-gray-500">
-                  {samples.length > 0 ? (
-                    <span className="truncate" title={samples.join(', ')}>
-                      {samples.join(', ')}
-                    </span>
-                  ) : (
-                    <span className="italic text-gray-300">-</span>
-                  )}
-                </td>
+                {profile && (
+                  <>
+                    <td className="px-3 py-1.5 text-right text-xs text-gray-600">{profile.distinct}</td>
+                    <td className="px-3 py-1.5 text-right text-xs">
+                      {profile.nullCount > 0 ? (
+                        <span className="text-orange-500">{profile.nullCount}</span>
+                      ) : (
+                        <span className="text-gray-300">0</span>
+                      )}
+                    </td>
+                    <td className="max-w-md px-3 py-1.5 text-xs text-gray-500">
+                      {profile.isNumeric && profile.min !== null ? (
+                        <span>
+                          <span className="text-gray-400">min:</span> {profile.min}
+                          <span className="mx-1 text-gray-300">|</span>
+                          <span className="text-gray-400">max:</span> {profile.max}
+                          {profile.samples.length > 0 && (
+                            <>
+                              <span className="mx-1 text-gray-300">|</span>
+                              <span className="truncate" title={profile.samples.join(', ')}>
+                                {profile.samples.join(', ')}
+                              </span>
+                            </>
+                          )}
+                        </span>
+                      ) : profile.samples.length > 0 ? (
+                        <span className="truncate" title={profile.samples.join(', ')}>
+                          {profile.samples.join(', ')}
+                        </span>
+                      ) : (
+                        <span className="italic text-gray-300">-</span>
+                      )}
+                    </td>
+                  </>
+                )}
               </tr>
             );
           })}
