@@ -852,7 +852,7 @@ function DisableConfirmModal({
                 onChange={(e) => setDisableMappings(e.target.checked)}
                 className="rounded border-neutral-300"
               />
-              <span>Also remove these output mappings (stored in code for re-enable)</span>
+              <span>Also disable these output mappings (will be restored when you re-enable this block)</span>
             </label>
           </div>
         )}
