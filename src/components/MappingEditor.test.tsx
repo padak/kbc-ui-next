@@ -11,7 +11,7 @@ vi.mock('@/hooks/useStorage', () => ({
   useTables: () => ({ data: [], isLoading: false }),
 }));
 
-import { getInputMappings, getOutputMappings, setInputMappings, setOutputMappings } from './MappingEditor';
+import { getInputMappings, getOutputMappings, setInputMappings, setOutputMappings, extractCreatedTables } from './MappingEditor';
 
 describe('getInputMappings', () => {
   it('returns empty array when no storage key', () => {
@@ -135,5 +135,77 @@ describe('setOutputMappings', () => {
     const storage = result.storage as Record<string, Record<string, unknown>>;
     expect(storage.input!.tables).toEqual([{ source: 'in.c-data.x', destination: 'x' }]);
     expect(storage.output!.tables).toEqual([{ source: 'y', destination: 'out.c-res.y' }]);
+  });
+});
+
+describe('extractCreatedTables', () => {
+  it('returns empty array for config without blocks', () => {
+    expect(extractCreatedTables({})).toEqual([]);
+  });
+
+  it('extracts quoted table names from CREATE TABLE', () => {
+    const config = {
+      parameters: {
+        blocks: [{
+          name: 'P1',
+          codes: [
+            { name: 'C1', script: ['CREATE TABLE "out_sales" AS\nSELECT 1;'] },
+            { name: 'C2', script: ['CREATE TABLE "out_orders" AS\nSELECT 2;'] },
+          ],
+        }],
+      },
+    };
+    expect(extractCreatedTables(config)).toEqual(['out_orders', 'out_sales']);
+  });
+
+  it('extracts unquoted table names', () => {
+    const config = {
+      parameters: {
+        blocks: [{
+          name: 'P1',
+          codes: [{ name: 'C1', script: ['CREATE TABLE my_table AS SELECT 1;'] }],
+        }],
+      },
+    };
+    expect(extractCreatedTables(config)).toEqual(['my_table']);
+  });
+
+  it('handles CREATE OR REPLACE TABLE', () => {
+    const config = {
+      parameters: {
+        blocks: [{
+          name: 'P1',
+          codes: [{ name: 'C1', script: ['CREATE OR REPLACE TABLE "result" AS SELECT 1;'] }],
+        }],
+      },
+    };
+    expect(extractCreatedTables(config)).toEqual(['result']);
+  });
+
+  it('skips disabled blocks', () => {
+    const config = {
+      parameters: {
+        blocks: [{
+          name: 'P1',
+          disabled: true,
+          codes: [{ name: 'C1', script: ['CREATE TABLE "skipped" AS SELECT 1;'] }],
+        }],
+      },
+    };
+    expect(extractCreatedTables(config)).toEqual([]);
+  });
+
+  it('deduplicates table names', () => {
+    const config = {
+      parameters: {
+        blocks: [{
+          name: 'P1',
+          codes: [
+            { name: 'C1', script: ['CREATE TABLE "t1" AS SELECT 1;\nCREATE TABLE "t1" AS SELECT 2;'] },
+          ],
+        }],
+      },
+    };
+    expect(extractCreatedTables(config)).toEqual(['t1']);
   });
 });

@@ -14,6 +14,7 @@ import { FlowBuilder } from '@/components/FlowBuilder';
 import { FlowEditor } from '@/components/FlowEditor';
 import { MappingEditor } from '@/components/MappingEditor';
 import { CodeEditor, extractCode } from '@/components/CodeEditor';
+import { TransformationBlocks, hasBlockStructure } from '@/components/TransformationBlocks';
 import { useConfiguration, useComponent } from '@/hooks/useComponents';
 import { useDeleteConfiguration } from '@/hooks/useComponents';
 import { useUpdateConfiguration } from '@/hooks/useMutations';
@@ -191,10 +192,23 @@ export function ConfigurationDetailPage() {
         />
       )}
 
-      {/* Code Editor (for transformation components) */}
-      {isTransformation && (
+      {/* Transformation code: phases & blocks (structured) or flat code editor (fallback) */}
+      {isTransformation && hasBlockStructure(config.configuration as Record<string, unknown>) && (
+        <TransformationBlocks
+          configuration={config.configuration as Record<string, unknown>}
+          language={componentId?.includes('python') ? 'python' : 'sql'}
+          onSave={async (newConfig) => {
+            await updateConfig.mutateAsync({
+              configuration: newConfig,
+              changeDescription: 'Updated queries via kbc-ui-next',
+            });
+          }}
+          isSaving={updateConfig.isPending}
+        />
+      )}
+      {isTransformation && !hasBlockStructure(config.configuration as Record<string, unknown>) && (
         <div className="mb-6">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">Code</h2>
+          <h2 className="mb-3 text-lg font-semibold text-neutral-900">Code</h2>
           <CodeEditor
             value={extractCode(config.configuration as Record<string, unknown>)}
             onChange={() => {}}

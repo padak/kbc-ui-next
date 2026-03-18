@@ -1,6 +1,6 @@
 // file: components/MappingEditor.tsx
 // Input/Output table mapping editor for transformations.
-// Shows source -> destination pairs with add/remove functionality.
+// Collapsible sections with item count badges for compact overview.
 // Used by: ConfigurationDetailPage for transformation components.
 // Reads available tables from Storage API via useTables hook.
 
@@ -23,6 +23,38 @@ type OutputMapping = {
   destination: string;
   incremental?: boolean;
 };
+
+// Threshold: auto-collapse mapping sections with more items than this
+const COLLAPSE_THRESHOLD = 8;
+
+// Extract table names created in SQL blocks (CREATE TABLE "name" / CREATE TABLE name)
+// Used to suggest output mapping sources from code.
+export function extractCreatedTables(config: Record<string, unknown>): string[] {
+  const params = config?.parameters as Record<string, unknown> | undefined;
+  const blocks = params?.blocks as Array<Record<string, unknown>> | undefined;
+  if (!Array.isArray(blocks)) return [];
+
+  const tables = new Set<string>();
+  const pattern = /CREATE\s+(?:OR\s+REPLACE\s+)?(?:TEMPORARY\s+|TEMP\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"([^"]+)"|([a-zA-Z_]\w*))/gi;
+
+  for (const block of blocks) {
+    if (block.disabled) continue;
+    const codes = block.codes as Array<Record<string, unknown>> | undefined;
+    if (!Array.isArray(codes)) continue;
+    for (const code of codes) {
+      if (code.disabled) continue;
+      const script = code.script ?? code._savedScript;
+      const text = Array.isArray(script) ? script.join('\n') : String(script ?? '');
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(text)) !== null) {
+        const name = match[1] ?? match[2];
+        if (name) tables.add(name);
+      }
+    }
+  }
+
+  return [...tables].sort();
+}
 
 // -- Pure helpers (exported for testing) --
 
@@ -68,16 +100,32 @@ export function setOutputMappings(config: Record<string, unknown>, mappings: Out
   };
 }
 
+// -- Chevron icon --
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`h-4 w-4 shrink-0 text-neutral-400 transition-transform ${open ? 'rotate-90' : ''}`}
+      viewBox="0 0 20 20"
+      fill="currentColor"
+    >
+      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 // -- Inline add-mapping form --
 
 function AddMappingForm({
   type,
   tableIds,
+  outputSuggestions,
   onAdd,
   onCancel,
 }: {
   type: 'input' | 'output';
   tableIds: string[];
+  outputSuggestions?: string[];
   onAdd: (source: string, destination: string) => void;
   onCancel: () => void;
 }) {
@@ -93,7 +141,7 @@ function AddMappingForm({
   return (
     <form onSubmit={handleSubmit} className="flex items-end gap-2 rounded-md border border-blue-200 bg-blue-50 p-3">
       <div className="flex-1">
-        <label className="mb-1 block text-xs font-medium text-gray-600">
+        <label className="mb-1 block text-xs font-medium text-neutral-600">
           {type === 'input' ? 'Source (storage table)' : 'Source (output name)'}
         </label>
         {type === 'input' ? (
@@ -103,7 +151,7 @@ function AddMappingForm({
               value={source}
               onChange={(e) => setSource(e.target.value)}
               placeholder="e.g. in.c-data.sales"
-              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               autoFocus
             />
             <datalist id="table-options">
@@ -113,17 +161,27 @@ function AddMappingForm({
             </datalist>
           </>
         ) : (
-          <input
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            placeholder="e.g. output"
-            className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            autoFocus
-          />
+          <>
+            <input
+              list={outputSuggestions?.length ? 'output-source-options' : undefined}
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              placeholder="e.g. output"
+              className="w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              autoFocus
+            />
+            {outputSuggestions && outputSuggestions.length > 0 && (
+              <datalist id="output-source-options">
+                {outputSuggestions.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            )}
+          </>
         )}
       </div>
       <div className="flex-1">
-        <label className="mb-1 block text-xs font-medium text-gray-600">
+        <label className="mb-1 block text-xs font-medium text-neutral-600">
           {type === 'input' ? 'Destination (alias)' : 'Destination (storage table)'}
         </label>
         {type === 'output' ? (
@@ -133,7 +191,7 @@ function AddMappingForm({
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
               placeholder="e.g. out.c-results.aggregated"
-              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
             <datalist id="table-options-output">
               {tableIds.map((id) => (
@@ -146,7 +204,7 @@ function AddMappingForm({
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
             placeholder="e.g. sales"
-            className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
         )}
       </div>
@@ -160,7 +218,7 @@ function AddMappingForm({
       <button
         type="button"
         onClick={onCancel}
-        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+        className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50"
       >
         Cancel
       </button>
@@ -168,13 +226,14 @@ function AddMappingForm({
   );
 }
 
-// -- Mapping table section --
+// -- Collapsible mapping table section --
 
 function MappingSection({
   title,
   type,
   mappings,
   tableIds,
+  outputSuggestions,
   onAdd,
   onRemove,
 }: {
@@ -182,74 +241,90 @@ function MappingSection({
   type: 'input' | 'output';
   mappings: Array<{ source: string; destination: string; incremental?: boolean }>;
   tableIds: string[];
+  outputSuggestions?: string[];
   onAdd: (source: string, destination: string) => void;
   onRemove: (index: number) => void;
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [expanded, setExpanded] = useState(mappings.length <= COLLAPSE_THRESHOLD);
 
   return (
-    <div className="mb-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
+    <div className="mb-3">
+      {/* Collapsible header */}
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-2 py-1.5 text-left"
+        >
+          <Chevron open={expanded} />
+          <h3 className="text-sm font-semibold text-neutral-700">{title}</h3>
+          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500">
+            {mappings.length}
+          </span>
+        </button>
         {!showAddForm && (
           <button
             type="button"
-            onClick={() => setShowAddForm(true)}
-            className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+            onClick={() => { setShowAddForm(true); setExpanded(true); }}
+            className="rounded-md border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-50"
           >
             + Add Mapping
           </button>
         )}
       </div>
 
-      {mappings.length > 0 && (
-        <div className="overflow-x-auto rounded-md border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      {/* Expanded table */}
+      {expanded && mappings.length > 0 && (
+        <div className="mt-1 overflow-x-auto rounded-md border border-neutral-200">
+          <table className="min-w-full divide-y divide-neutral-200">
+            <thead className="bg-neutral-50">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="px-3 py-1.5 text-left text-xs font-medium uppercase text-neutral-500">
                   {type === 'input' ? 'Source (Storage Table)' : 'Source (Output Name)'}
                 </th>
-                <th className="px-3 py-2 text-center text-xs text-gray-400">{' '}</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="w-8 px-1 py-1.5 text-center text-xs text-neutral-400"> </th>
+                <th className="px-3 py-1.5 text-left text-xs font-medium uppercase text-neutral-500">
                   {type === 'input' ? 'Destination (Alias)' : 'Destination (Storage Table)'}
                 </th>
                 {type === 'output' && (
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Incremental</th>
+                  <th className="px-3 py-1.5 text-left text-xs font-medium uppercase text-neutral-500">Incr.</th>
                 )}
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">{' '}</th>
+                <th className="w-8 px-3 py-1.5 text-right text-xs font-medium uppercase text-neutral-500"> </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="divide-y divide-neutral-100 bg-white">
               {mappings.map((mapping, index) => (
-                <tr key={`${mapping.source}-${mapping.destination}-${index}`}>
-                  <td className="px-3 py-2 font-mono text-sm text-gray-700">
+                <tr key={`${mapping.source}-${mapping.destination}-${index}`} className="hover:bg-neutral-50">
+                  <td className="px-3 py-1.5 font-mono text-xs text-neutral-700">
                     {type === 'input' && (
-                      <span className="mr-1 inline-block rounded bg-blue-50 px-1 py-0.5 text-[10px] font-medium text-blue-600">
+                      <span className={`mr-1.5 inline-block rounded px-1 py-0.5 text-[10px] font-medium ${
+                        mapping.source.startsWith('out.') ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'
+                      }`}>
                         {mapping.source.startsWith('out.') ? 'out' : 'in'}
                       </span>
                     )}
                     {mapping.source}
                   </td>
-                  <td className="px-1 py-2 text-center text-gray-400">&#8594;</td>
-                  <td className="px-3 py-2 font-mono text-sm text-gray-700">
+                  <td className="px-1 py-1.5 text-center text-neutral-300">&rarr;</td>
+                  <td className="px-3 py-1.5 font-mono text-xs text-neutral-700">
                     {type === 'output' && (
-                      <span className="mr-1 inline-block rounded bg-green-50 px-1 py-0.5 text-[10px] font-medium text-green-600">
+                      <span className="mr-1.5 inline-block rounded bg-green-50 px-1 py-0.5 text-[10px] font-medium text-green-600">
                         {mapping.destination.startsWith('out.') ? 'out' : 'in'}
                       </span>
                     )}
                     {mapping.destination}
                   </td>
                   {type === 'output' && (
-                    <td className="px-3 py-2 text-sm text-gray-500">
+                    <td className="px-3 py-1.5 text-xs text-neutral-500">
                       {mapping.incremental ? 'Yes' : 'No'}
                     </td>
                   )}
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-3 py-1.5 text-right">
                     <button
                       type="button"
                       onClick={() => onRemove(index)}
-                      className="text-red-400 hover:text-red-600"
+                      className="text-neutral-300 hover:text-red-500 transition-colors"
                       title="Remove mapping"
                     >
                       &#10005;
@@ -262,9 +337,16 @@ function MappingSection({
         </div>
       )}
 
+      {/* Collapsed summary */}
+      {!expanded && mappings.length > 0 && (
+        <p className="mt-1 pl-6 text-xs text-neutral-400">
+          {mappings.length} {type === 'input' ? 'input' : 'output'} table{mappings.length !== 1 ? 's' : ''} mapped
+        </p>
+      )}
+
       {mappings.length === 0 && !showAddForm && (
-        <p className="rounded-md border border-dashed border-gray-200 px-3 py-4 text-center text-sm text-gray-400">
-          No mappings configured.
+        <p className="mt-1 rounded-md border border-dashed border-neutral-200 px-3 py-3 text-center text-xs text-neutral-400">
+          No {type} mappings configured.
         </p>
       )}
 
@@ -273,6 +355,7 @@ function MappingSection({
           <AddMappingForm
             type={type}
             tableIds={tableIds}
+            outputSuggestions={outputSuggestions}
             onAdd={(source, destination) => {
               onAdd(source, destination);
               setShowAddForm(false);
@@ -334,15 +417,15 @@ export function MappingEditor({ configuration, onSave, isSaving }: MappingEditor
   }
 
   return (
-    <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+    <div className="mb-6">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Table Mapping</h2>
+        <h2 className="text-lg font-semibold text-neutral-900">Table Mapping</h2>
         {hasChanges && (
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleDiscard}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+              className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50"
             >
               Discard
             </button>
@@ -350,7 +433,7 @@ export function MappingEditor({ configuration, onSave, isSaving }: MappingEditor
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300"
+              className="rounded-md bg-green-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-600 disabled:bg-green-300"
             >
               {isSaving ? 'Saving...' : 'Save Mappings'}
             </button>
@@ -372,6 +455,7 @@ export function MappingEditor({ configuration, onSave, isSaving }: MappingEditor
         type="output"
         mappings={outputMappings}
         tableIds={tableIds}
+        outputSuggestions={extractCreatedTables(config)}
         onAdd={handleAddOutput}
         onRemove={handleRemoveOutput}
       />
