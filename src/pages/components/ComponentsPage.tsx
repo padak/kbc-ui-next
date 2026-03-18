@@ -89,11 +89,18 @@ export function ComponentsPage() {
                     <p className="truncate text-sm font-medium text-gray-900">{comp.name}</p>
                     <p className="truncate text-xs text-gray-500">{comp.id}</p>
                   </div>
-                  {comp.configurationSchema && Object.keys(comp.configurationSchema).length > 0 ? (
-                    <span className="shrink-0 rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">Form</span>
-                  ) : (
-                    <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">Raw</span>
-                  )}
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {(comp.configurations?.length ?? 0) > 0 && (
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+                        {comp.configurations!.length}
+                      </span>
+                    )}
+                    {comp.configurationSchema && Object.keys(comp.configurationSchema).length > 0 ? (
+                      <span className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">Form</span>
+                    ) : (
+                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">Raw</span>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
