@@ -86,11 +86,11 @@ export function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50"
+      className="kbc-command-backdrop fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50"
       onClick={() => setIsOpen(false)}
     >
       <div
-        className="w-full max-w-xl rounded-xl bg-white shadow-2xl"
+        className="kbc-command-dialog w-full max-w-xl rounded-xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}

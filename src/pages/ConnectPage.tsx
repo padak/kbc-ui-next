@@ -102,10 +102,11 @@ export function ConnectPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-        <div className="text-center">
-          <div className="mb-4 text-4xl text-gray-300">&#8987;</div>
-          <h1 className="text-xl font-semibold text-gray-700">Loading projects...</h1>
-          <p className="mt-2 text-sm text-gray-400">Verifying API tokens</p>
+        <div className="w-72 space-y-4 text-center">
+          <div className="mx-auto h-12 w-12 animate-pulse rounded-full bg-gray-200 kbc-skeleton" />
+          <div className="mx-auto h-5 w-48 animate-pulse rounded bg-gray-200 kbc-skeleton" />
+          <div className="mx-auto h-4 w-32 animate-pulse rounded bg-gray-200 kbc-skeleton" />
+          <p className="mt-4 text-sm text-gray-400">Verifying API tokens...</p>
         </div>
       </div>
     );
@@ -132,7 +133,7 @@ export function ConnectPage() {
               <button
                 key={org.id}
                 onClick={() => handleConnectOrg(org)}
-                className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-5 py-4 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
+                className="kbc-connect-card flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-5 py-4 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
               >
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{org.name}</p>
@@ -140,7 +141,7 @@ export function ConnectPage() {
                     {org.projects.length} project{org.projects.length !== 1 ? 's' : ''} on {new URL(org.stack).hostname.replace('connection.', '')}
                   </p>
                 </div>
-                <span className="text-sm text-blue-600">Connect &rarr;</span>
+                <span className="kbc-connect-arrow text-sm text-blue-600">Connect &rarr;</span>
               </button>
             ))}
 
@@ -159,7 +160,7 @@ export function ConnectPage() {
         {/* Manual connect form */}
         {(orgs.length === 0 || showManualForm) && (
           <>
-            <form onSubmit={handleManualSubmit} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <form onSubmit={handleManualSubmit} className="kbc-connect-form rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <div className="mb-4">
                 <StackUrlPicker value={stackUrl} onChange={setStackUrl} />
               </div>
@@ -188,7 +189,7 @@ export function ConnectPage() {
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-blue-400"
+                className="kbc-connect-submit w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-blue-400"
               >
                 {isPending ? 'Connecting...' : 'Connect'}
               </button>

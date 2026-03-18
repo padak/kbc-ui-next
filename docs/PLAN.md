@@ -152,12 +152,12 @@ Apply Keboola Product Design System from Figma. Toggle on/off via `data-theme="k
 - [x] **Scrollbars** - thin 6px with neutral thumb
 - [x] **Transitions** - 150ms ease on all interactive elements
 
-**Remaining polish** (per-page fine-tuning, do as needed):
-- [ ] **Toast notifications** - success/error/warning with auto-dismiss (need component)
-- [ ] **Skeleton loading** - placeholder shimmer for async content
-- [ ] **Tooltip component** - positioned tooltips (currently using title attr)
-- [ ] **Connect page** - login form styling
-- [ ] **Command palette** - modal backdrop + styling refinement
+**Remaining polish** (done):
+- [x] **Toast notifications** - Zustand store + ToastContainer, success/error/warning/info with auto-dismiss, slide-in animation
+- [x] **Skeleton loading** - Skeleton/SkeletonTable/SkeletonCard components with shimmer gradient under theme
+- [x] **Tooltip component** - CSS-only via `data-tooltip` attribute, arrow + positioned above, works with/without theme
+- [x] **Connect page** - org cards: green hover + lift under theme, form: refined borders/shadow, submit button: green primary
+- [x] **Command palette** - backdrop blur + refined dialog shadow/border under theme
 
 ### Phase 6: Remaining features
 Everything else from the legacy UI.

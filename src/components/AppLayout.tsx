@@ -10,7 +10,8 @@ import { useConnectionStore } from '@/stores/connection';
 import { Sidebar } from './Sidebar';
 import { CommandPalette } from './CommandPalette';
 import { ErrorBoundary } from './ErrorBoundary';
-import { ThemeToggle } from './ThemeToggle';
+import { ToastContainer } from './Toast';
+import { Skeleton } from './Skeleton';
 import { useMetadataPreload } from '@/hooks/useMetadataPreload';
 
 export function AppLayout() {
@@ -20,9 +21,11 @@ export function AppLayout() {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="mb-4 text-4xl text-gray-300">&#8987;</div>
-          <p className="text-sm text-gray-500">Loading projects...</p>
+        <div className="w-64 space-y-4 text-center">
+          <Skeleton variant="line" height={24} width="60%" className="mx-auto" />
+          <Skeleton variant="line" height={16} width="80%" className="mx-auto" />
+          <Skeleton variant="line" height={16} width="45%" className="mx-auto" />
+          <p className="mt-4 text-sm text-gray-500">Loading projects...</p>
         </div>
       </div>
     );
@@ -59,7 +62,7 @@ function AppLayoutInner({
         </ErrorBoundary>
       </main>
       <CommandPalette />
-      <ThemeToggle />
+      <ToastContainer />
     </div>
   );
 }

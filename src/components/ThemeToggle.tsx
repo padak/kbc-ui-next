@@ -13,7 +13,7 @@ export function ThemeToggle() {
     <button
       onClick={toggle}
       className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-lg transition-all hover:shadow-xl"
-      title={designSystem ? 'Switch to default theme' : 'Switch to Keboola Design System'}
+      data-tooltip={designSystem ? 'Switch to default theme' : 'Switch to Keboola Design System'}
     >
       <span
         className={`inline-block h-3 w-3 rounded-full transition-colors ${

@@ -8,6 +8,7 @@ import { NavLink } from 'react-router';
 import { NAV_ITEMS } from '@/lib/constants';
 import { useConnectionStore } from '@/stores/connection';
 import type { ProjectEntry } from '@/stores/connection';
+import { useThemeStore } from '@/stores/theme';
 
 const ICONS: Record<string, string> = {
   home: '\u2302',
@@ -49,6 +50,26 @@ function extractStackLabel(stackUrl: string): string {
   } catch {
     return stackUrl;
   }
+}
+
+function ThemeToggleInline({ collapsed }: { collapsed: boolean }) {
+  const { designSystem, toggle } = useThemeStore();
+  return (
+    <button
+      onClick={toggle}
+      title={collapsed ? (designSystem ? 'Design System ON' : 'Design System OFF') : undefined}
+      className={`mb-1.5 flex w-full items-center gap-2 rounded-md py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 ${
+        collapsed ? 'justify-center px-1' : 'px-3'
+      }`}
+    >
+      <span
+        className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full transition-colors ${
+          designSystem ? 'bg-green-500' : 'bg-gray-300'
+        }`}
+      />
+      {!collapsed && (designSystem ? 'Design System ON' : 'Design System OFF')}
+    </button>
+  );
 }
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
@@ -160,6 +181,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             {tokenDescription}
           </p>
         )}
+        <ThemeToggleInline collapsed={collapsed} />
         <button
           onClick={disconnect}
           title={collapsed ? 'Disconnect' : undefined}

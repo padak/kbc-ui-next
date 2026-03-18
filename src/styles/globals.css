@@ -379,3 +379,192 @@
 [data-theme="keboola"] button {
   transition: all 0.15s ease;
 }
+
+/* ==========================================================================
+   Toast Notifications
+   Slide-in animation always active; colors refined under theme.
+   ========================================================================== */
+
+@keyframes kbc-toast-slide-in {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.kbc-toast {
+  animation: kbc-toast-slide-in 0.3s ease-out;
+  max-width: 400px;
+  min-width: 300px;
+}
+
+[data-theme="keboola"] .kbc-toast {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dialog);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+[data-theme="keboola"] .kbc-toast-success {
+  background: var(--color-green-100);
+  border-color: var(--color-green-300);
+  color: var(--color-green-800);
+}
+
+[data-theme="keboola"] .kbc-toast-error {
+  background: var(--color-red-100);
+  border-color: var(--color-red-300);
+  color: var(--color-red-800);
+}
+
+[data-theme="keboola"] .kbc-toast-warning {
+  background: var(--color-orange-100);
+  border-color: var(--color-orange-300);
+  color: var(--color-orange-800);
+}
+
+[data-theme="keboola"] .kbc-toast-info {
+  background: var(--color-blue-100);
+  border-color: var(--color-blue-300);
+  color: var(--color-blue-800);
+}
+
+/* ==========================================================================
+   Skeleton Loading
+   Base uses animate-pulse; theme adds directional shimmer gradient.
+   ========================================================================== */
+
+@keyframes kbc-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+[data-theme="keboola"] .kbc-skeleton {
+  animation: kbc-shimmer 1.5s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    var(--color-neutral-100) 25%,
+    var(--color-neutral-50) 50%,
+    var(--color-neutral-100) 75%
+  );
+  background-size: 200% 100%;
+}
+
+/* ==========================================================================
+   Tooltip (data-tooltip attribute)
+   Base tooltip always works; theme refines colors and shadow.
+   Usage: <button data-tooltip="Help text">?</button>
+   ========================================================================== */
+
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  background: #222529;
+  color: #fff;
+  z-index: 100;
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+}
+
+[data-tooltip]::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: #222529;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 100;
+}
+
+[data-tooltip]:hover::before {
+  opacity: 1;
+}
+
+[data-theme="keboola"] [data-tooltip]::after {
+  background: var(--color-neutral-800);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md);
+}
+
+[data-theme="keboola"] [data-tooltip]::before {
+  border-top-color: var(--color-neutral-800);
+}
+
+/* ==========================================================================
+   Connect Page — login form polish
+   Org cards get green hover, form gets refined borders and primary button.
+   ========================================================================== */
+
+[data-theme="keboola"] .kbc-connect-card {
+  border-color: var(--color-neutral-150);
+  box-shadow: var(--shadow-card);
+  transition: all 0.15s ease;
+}
+
+[data-theme="keboola"] .kbc-connect-card:hover {
+  border-color: var(--color-green-400);
+  background: var(--color-green-100);
+  box-shadow: var(--shadow-dialog);
+  transform: translateY(-1px);
+}
+
+[data-theme="keboola"] .kbc-connect-card:hover .kbc-connect-arrow {
+  color: var(--color-green-600);
+}
+
+[data-theme="keboola"] .kbc-connect-form {
+  border-color: var(--color-neutral-150);
+  box-shadow: var(--shadow-card);
+}
+
+[data-theme="keboola"] .kbc-connect-submit {
+  background: var(--color-green-500) !important;
+  border-radius: var(--radius-md);
+}
+
+[data-theme="keboola"] .kbc-connect-submit:hover:not(:disabled) {
+  background: var(--color-green-600) !important;
+  box-shadow: 0 2px 4px rgba(30, 199, 30, 0.3);
+}
+
+/* ==========================================================================
+   Command Palette — backdrop blur and refined dialog
+   ========================================================================== */
+
+[data-theme="keboola"] .kbc-command-backdrop {
+  backdrop-filter: blur(4px);
+  background: rgba(16, 17, 20, 0.4);
+}
+
+[data-theme="keboola"] .kbc-command-dialog {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
+              0 0 0 1px var(--color-neutral-150);
+  border-radius: var(--radius-xl);
+}
+
+[data-theme="keboola"] .kbc-command-dialog input {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+[data-theme="keboola"] .kbc-command-dialog kbd {
+  border-color: var(--color-neutral-200);
+  color: var(--color-neutral-400);
+}
