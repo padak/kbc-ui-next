@@ -75,13 +75,38 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   );
 }
 
+// -- Extract inline metrics from storage import events --
+
+function getImportMetrics(event: KeboolaEvent): { rows?: number; size?: string; duration?: string } | null {
+  if (event.event !== 'storage.tableImportDone' && event.event !== 'storage.tableExportDone') return null;
+  const results = event.results as Record<string, unknown>;
+  const perf = event.performance as Record<string, unknown> | undefined;
+  const rows = results?.rowsCount as number | undefined;
+  const sizeBytes = results?.sizeBytes as number | undefined;
+  const importDur = perf?.importDuration as number | undefined;
+
+  if (!rows && !sizeBytes) return null;
+
+  const size = sizeBytes != null
+    ? sizeBytes < 1024 ? `${sizeBytes}B`
+    : sizeBytes < 1048576 ? `${(sizeBytes / 1024).toFixed(1)}KB`
+    : `${(sizeBytes / 1048576).toFixed(1)}MB`
+    : undefined;
+
+  const duration = importDur != null ? `${importDur.toFixed(1)}s` : undefined;
+
+  return { rows, size, duration };
+}
+
 // -- Single event row --
 
 function EventRow({ event, search }: { event: KeboolaEvent; search: string }) {
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
   const style = TYPE_STYLES[event.type] ?? TYPE_STYLES.info!;
   const isStorage = isStorageEvent(event);
   const message = event.message || event.event;
+  const importMetrics = getImportMetrics(event);
 
   // Build detail object (skip empty fields)
   const detail: Record<string, unknown> = {};
@@ -92,6 +117,15 @@ function EventRow({ event, search }: { event: KeboolaEvent; search: string }) {
   if (event.performance && Object.keys(event.performance).length > 0) detail.performance = event.performance;
   if (event.token) detail.token = event.token;
   if (event.context) detail.context = event.context;
+
+  const detailJson = JSON.stringify(detail, null, 2);
+
+  function handleCopyDetail(e: React.MouseEvent) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(detailJson);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
 
   return (
     <div className={`border-b border-gray-100 last:border-b-0 ${
@@ -128,17 +162,39 @@ function EventRow({ event, search }: { event: KeboolaEvent; search: string }) {
           {highlightMatch(message, search)}
         </span>
 
+        {/* Inline import metrics */}
+        {importMetrics && (
+          <span className="shrink-0 flex items-center gap-2 font-mono text-[10px]">
+            {importMetrics.rows != null && (
+              <span className="text-green-600" title="Rows imported">{importMetrics.rows.toLocaleString()} rows</span>
+            )}
+            {importMetrics.size && (
+              <span className="text-blue-500" title="Data size">{importMetrics.size}</span>
+            )}
+            {importMetrics.duration && (
+              <span className="text-gray-400" title="Import duration">{importMetrics.duration}</span>
+            )}
+          </span>
+        )}
+
         {/* Expand indicator */}
         <span className={`shrink-0 text-[10px] text-gray-300 transition-transform ${expanded ? 'rotate-90' : ''}`}>
           &#9656;
         </span>
       </button>
 
-      {/* Expanded detail */}
+      {/* Expanded detail with copy button */}
       {expanded && (
-        <div className="border-t border-gray-100 bg-gray-50 px-3 py-2">
-          <pre className="overflow-x-auto font-mono text-xs text-gray-600 whitespace-pre-wrap">
-            {JSON.stringify(detail, null, 2)}
+        <div className="border-t border-gray-100 bg-gray-50 px-3 py-2 relative">
+          <button
+            type="button"
+            onClick={handleCopyDetail}
+            className="absolute top-2 right-3 rounded bg-white border border-gray-200 px-2 py-0.5 text-[10px] text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+          <pre className="overflow-x-auto font-mono text-xs text-gray-600 whitespace-pre-wrap pr-16">
+            {detailJson}
           </pre>
         </div>
       )}
