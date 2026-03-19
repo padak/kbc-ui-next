@@ -14,6 +14,7 @@ Only items that exist in our codebase — not legacy kbc-ui issues.
 | transformations | Dependency analysis | `analyzeDisableImpact()` parses SQL to find CREATE TABLE / FROM / JOIN to detect cross-block dependencies. `src/components/TransformationBlocks.tsx` | Low | Acceptable frontend logic — SQL parsing for UX hints |
 | transformations | SQL statement splitting | `splitStatements()` splits SQL by `;` respecting quotes/comments for Keboola runner. `src/components/TransformationBlocks.tsx` | Medium | Runner could accept full SQL text and split server-side |
 | transformations | Output mapping suggestions | `extractCreatedTables()` parses CREATE TABLE from SQL to suggest output mapping sources. `src/components/MappingEditor.tsx` | Low | Acceptable frontend logic — UX convenience |
+| events | Master token requirement | Storage events API only returns events created by the same token. Tokens created via Management API are not master tokens — they can't see events from other tokens (jobs, schedulers, etc.). Legacy UI uses SSO master token. Our org-setup tokens miss all historical and job events. | High | Management API should support creating master tokens, or events API should respect `canReadAllFileUploads` for cross-token event access |
 
 ## Notes
 

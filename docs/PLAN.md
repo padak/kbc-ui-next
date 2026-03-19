@@ -168,6 +168,16 @@ Everything else from the legacy UI.
 - [ ] **Schema-driven sync actions** - discover available actions from component schema `properties[].options.async.action`. Render buttons dynamically.
 - [ ] **Generic extractor actions** - `test_request` (test HTTP endpoint), `load_from_curl` (parse cURL to config), `infer_mapping` (auto-detect table structure)
 
+**Events** (done — with known token limitation):
+- [x] **Events API client** - `GET /v2/storage/events` with `runId`, global/table/bucket/job filters
+- [x] **EventsViewer component** - terminal-style log with search, type/source filters, expand, copy/download
+- [x] **Job events** - per-job event stream with 5s polling, inline import metrics (rows, size, duration)
+- [x] **Global events page** - `/events` route with 10s polling
+- [x] **4 job detail layouts** - Classic/Split/Terminal/Dashboard with vote button, localStorage persistence
+- [x] **Structured job result** - output/input tables with columns, JSON toggle
+- [ ] **Master token requirement** - tokens created via Management API (`POST /manage/projects/{id}/tokens`) are NOT master tokens. Storage events API only returns events created by the SAME token. Legacy UI uses SSO master token which sees ALL events. **Workaround**: user must connect with their master token (from project Settings -> API Tokens). **Proper fix**: either create master tokens via Management API (if supported), or add UI to let user paste their master token per project.
+- [ ] **Project switch navigation** - redirect from detail pages to listings when switching projects (partially implemented)
+
 **Other features:**
 - [ ] **Data Catalog** - shared buckets between projects
 - [ ] **Data Apps** - Streamlit app management
