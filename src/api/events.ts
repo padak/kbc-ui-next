@@ -32,6 +32,7 @@ type EventsQuery = {
   maxId?: string;
   q?: string;
   component?: string;
+  runId?: string; // Filter by job run ID (dedicated API parameter, not Lucene query)
 };
 
 function buildQueryString(params: EventsQuery): string {
@@ -41,6 +42,7 @@ function buildQueryString(params: EventsQuery): string {
   if (params.maxId) parts.push(`maxId=${params.maxId}`);
   if (params.q) parts.push(`q=${encodeURIComponent(params.q)}`);
   if (params.component) parts.push(`component=${encodeURIComponent(params.component)}`);
+  if (params.runId) parts.push(`runId=${encodeURIComponent(params.runId)}`);
   return parts.length > 0 ? `?${parts.join('&')}` : '';
 }
 

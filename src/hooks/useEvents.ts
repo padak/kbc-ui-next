@@ -19,18 +19,14 @@ export function useEvents(params?: { q?: string; component?: string; limit?: num
   });
 }
 
-export function useJobEvents(jobId: string | undefined, runId: string | undefined) {
+export function useJobEvents(jobId: string | undefined, _runId: string | undefined) {
   const { isConnected, activeProjectId } = useConnectionStore();
-  // Orchestrator-spawned jobs: runId is the parent orchestrator's runId, not the jobId.
-  // Storage events use the child job's ID as runId.
-  // Search for both to catch all events.
-  const searchQuery = runId && runId !== jobId
-    ? `runId:${jobId} OR runId:${runId}`
-    : `runId:${jobId}`;
+  // Legacy UI uses job.id as the runId parameter (not job.runId).
+  // The API's runId query param is a dedicated filter, not a Lucene query.
 
   return useQuery({
-    queryKey: [activeProjectId, 'events', 'job', jobId, runId],
-    queryFn: () => eventsApi.listEvents({ q: searchQuery, limit: 200 }),
+    queryKey: [activeProjectId, 'events', 'job', jobId],
+    queryFn: () => eventsApi.listEvents({ runId: jobId, limit: 200 }),
     enabled: isConnected && !!jobId,
     refetchInterval: 5_000,
   });

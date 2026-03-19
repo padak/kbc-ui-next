@@ -4,8 +4,8 @@
 // Used by: App.tsx as the parent route for all authenticated pages.
 // Handles loading state during project initialization.
 
-import { useState } from 'react';
-import { Outlet, Navigate } from 'react-router';
+import { useState, useEffect, useRef } from 'react';
+import { Outlet, Navigate, useNavigate, useLocation } from 'react-router';
 import { useConnectionStore } from '@/stores/connection';
 import { Sidebar } from './Sidebar';
 import { CommandPalette } from './CommandPalette';
@@ -44,6 +44,9 @@ export function AppLayout() {
 }
 
 // Inner component rendered after auth guard - safe to call hooks here
+// Routes with IDs that are project-specific — navigating away on project switch
+const PROJECT_SPECIFIC_ROUTES = ['/jobs/', '/storage/', '/components/'];
+
 function AppLayoutInner({
   sidebarCollapsed,
   onToggleSidebar,
@@ -52,6 +55,25 @@ function AppLayoutInner({
   onToggleSidebar: () => void;
 }) {
   useMetadataPreload();
+  const { activeProjectId } = useConnectionStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const prevProjectId = useRef(activeProjectId);
+
+  // When active project changes, redirect away from project-specific detail pages
+  useEffect(() => {
+    if (prevProjectId.current && prevProjectId.current !== activeProjectId) {
+      const isOnDetailPage = PROJECT_SPECIFIC_ROUTES.some(
+        (prefix) => location.pathname.startsWith(prefix) && location.pathname !== prefix.slice(0, -1),
+      );
+      if (isOnDetailPage) {
+        // Navigate to the parent listing page (e.g. /jobs/123 -> /jobs)
+        const parentPath = '/' + location.pathname.split('/')[1];
+        navigate(parentPath, { replace: true });
+      }
+    }
+    prevProjectId.current = activeProjectId;
+  }, [activeProjectId, location.pathname, navigate]);
 
   return (
     <div className="flex h-screen">
