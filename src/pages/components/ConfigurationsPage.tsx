@@ -12,6 +12,7 @@ import { CreateModal } from '@/components/CreateModal';
 import { useComponent, useConfigurations } from '@/hooks/useComponents';
 import { useCreateConfiguration } from '@/hooks/useMutations';
 import { formatDate } from '@/lib/formatters';
+import { stripMarkdown } from '@/lib/stripMarkdown';
 import type { Configuration } from '@/api/schemas';
 
 const COLUMNS = [
@@ -21,7 +22,7 @@ const COLUMNS = [
     render: (c: Configuration) => (
       <div>
         <span className="font-medium">{c.name}</span>
-        {c.description && <p className="mt-0.5 text-xs text-gray-400">{c.description}</p>}
+        {c.description && <p className="mt-0.5 text-xs text-gray-400">{stripMarkdown(c.description)}</p>}
       </div>
     ),
     sortValue: (c: Configuration) => c.name,
