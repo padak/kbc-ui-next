@@ -75,27 +75,48 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   );
 }
 
-// -- Extract inline metrics from storage import events --
+// -- Extract inline metrics from events for display in the row --
 
-function getImportMetrics(event: KeboolaEvent): { rows?: number; size?: string; duration?: string } | null {
-  if (event.event !== 'storage.tableImportDone' && event.event !== 'storage.tableExportDone') return null;
+type InlineMetric = { label: string; value: string; color: string };
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)}KB`;
+  if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(1)}MB`;
+  return `${(bytes / 1073741824).toFixed(2)}GB`;
+}
+
+function getInlineMetrics(event: KeboolaEvent): InlineMetric[] {
+  const metrics: InlineMetric[] = [];
   const results = event.results as Record<string, unknown>;
+  const params = event.params as Record<string, unknown>;
   const perf = event.performance as Record<string, unknown> | undefined;
-  const rows = results?.rowsCount as number | undefined;
-  const sizeBytes = results?.sizeBytes as number | undefined;
-  const importDur = perf?.importDuration as number | undefined;
 
-  if (!rows && !sizeBytes) return null;
+  // Import done: rows, size, duration
+  if (event.event === 'storage.tableImportDone' || event.event === 'storage.tableExportDone') {
+    const rows = results?.rowsCount as number | undefined;
+    const sizeBytes = results?.sizeBytes as number | undefined;
+    const importDur = perf?.importDuration as number | undefined;
+    if (rows != null) metrics.push({ label: 'rows', value: rows.toLocaleString(), color: 'text-green-600' });
+    if (sizeBytes != null) metrics.push({ label: 'size', value: formatBytes(sizeBytes), color: 'text-blue-500' });
+    if (importDur != null) metrics.push({ label: 'time', value: `${importDur.toFixed(1)}s`, color: 'text-gray-400' });
+  }
 
-  const size = sizeBytes != null
-    ? sizeBytes < 1024 ? `${sizeBytes}B`
-    : sizeBytes < 1048576 ? `${(sizeBytes / 1024).toFixed(1)}KB`
-    : `${(sizeBytes / 1048576).toFixed(1)}MB`
-    : undefined;
+  // Import started: columns count
+  if (event.event === 'storage.tableImportStarted') {
+    const cols = params?.columns as string[] | undefined;
+    if (cols?.length) metrics.push({ label: 'cols', value: String(cols.length), color: 'text-purple-500' });
+    const incremental = params?.incremental;
+    if (incremental === true) metrics.push({ label: '', value: 'incr', color: 'text-orange-500' });
+  }
 
-  const duration = importDur != null ? `${importDur.toFixed(1)}s` : undefined;
+  // Workspace created: backend type
+  if (event.event === 'storage.workspaceCreated') {
+    const backend = params?.backend as string | undefined;
+    if (backend) metrics.push({ label: '', value: backend, color: 'text-cyan-600' });
+  }
 
-  return { rows, size, duration };
+  return metrics;
 }
 
 // -- Single event row --
@@ -106,7 +127,7 @@ function EventRow({ event, search }: { event: KeboolaEvent; search: string }) {
   const style = TYPE_STYLES[event.type] ?? TYPE_STYLES.info!;
   const isStorage = isStorageEvent(event);
   const message = event.message || event.event;
-  const importMetrics = getImportMetrics(event);
+  const inlineMetrics = getInlineMetrics(event);
 
   // Build detail object (skip empty fields)
   const detail: Record<string, unknown> = {};
@@ -162,18 +183,14 @@ function EventRow({ event, search }: { event: KeboolaEvent; search: string }) {
           {highlightMatch(message, search)}
         </span>
 
-        {/* Inline import metrics */}
-        {importMetrics && (
+        {/* Inline metrics */}
+        {inlineMetrics.length > 0 && (
           <span className="shrink-0 flex items-center gap-2 font-mono text-[10px]">
-            {importMetrics.rows != null && (
-              <span className="text-green-600" title="Rows imported">{importMetrics.rows.toLocaleString()} rows</span>
-            )}
-            {importMetrics.size && (
-              <span className="text-blue-500" title="Data size">{importMetrics.size}</span>
-            )}
-            {importMetrics.duration && (
-              <span className="text-gray-400" title="Import duration">{importMetrics.duration}</span>
-            )}
+            {inlineMetrics.map((m, i) => (
+              <span key={i} className={m.color} title={m.label}>
+                {m.value}{m.label ? ` ${m.label}` : ''}
+              </span>
+            ))}
           </span>
         )}
 
