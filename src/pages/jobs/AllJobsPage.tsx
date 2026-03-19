@@ -12,6 +12,7 @@ import { useAllProjectsJobs, type MultiProjectJob } from '@/hooks/useAllProjects
 import { useComponentLookup } from '@/hooks/useComponentLookup';
 import { useConnectionStore } from '@/stores/connection';
 import { formatRelativeTime } from '@/lib/formatters';
+import { calculateJobCredits, formatCredits, getContainerSize } from '@/config/credits';
 
 const STATUS_FILTERS = [
   'all',
@@ -20,7 +21,16 @@ const STATUS_FILTERS = [
   'error',
   'waiting',
   'terminated',
+  'cancelled',
 ] as const;
+
+const TYPE_LABELS: Record<string, string> = {
+  extractor: 'Data Source',
+  writer: 'Data Destination',
+  application: 'Application',
+  transformation: 'Transformation',
+  other: '',
+};
 
 function formatDuration(seconds: number | null | undefined): string {
   if (seconds == null || seconds === 0) return '-';
@@ -34,16 +44,18 @@ export function AllJobsPage() {
   const { setActiveProject } = useConnectionStore();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { data: jobs, isLoading, isPartial, loadedCount, totalCount, failedCount } = useAllProjectsJobs({ limit: 30 });
-  const { getComponentName, getComponentType } = useComponentLookup();
+  const { getComponentName, getComponentType, getComponentIcon, getConfigName } = useComponentLookup();
 
   const filtered =
     statusFilter === 'all' ? jobs : jobs.filter((j) => j.status === statusFilter);
+
+  const totalCredits = filtered.reduce((sum, j) => sum + calculateJobCredits(j.durationSeconds, getContainerSize((j as Record<string, unknown>).metrics), j.component), 0);
 
   return (
     <div>
       <PageHeader
         title="All Jobs"
-        description="Jobs across all projects"
+        description={`Jobs across all projects${totalCredits > 0 ? ` \u00B7 ${formatCredits(totalCredits)} credits (shown jobs)` : ''}`}
         actions={
           <Link
             to="/jobs"
@@ -86,58 +98,73 @@ export function AllJobsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                  Project
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                  Component
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                  Duration
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                  Created
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                  Status
-                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Project</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Component</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Configuration</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Duration</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Credits</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Created</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
               {!filtered.length ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">
                     No jobs found
                   </td>
                 </tr>
               ) : (
-                filtered.map((job: MultiProjectJob) => (
-                  <tr
-                    key={`${job._projectId}-${job.id}`}
-                    onClick={() => {
-                      setActiveProject(job._projectId);
-                      navigate(`/jobs/${job.id}`);
-                    }}
-                    className="cursor-pointer hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-3">
-                      <p className="text-xs font-medium text-gray-700">{job._projectName}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-sm text-gray-900">{getComponentName(job.component)}</p>
-                      <p className="text-xs text-gray-400">{getComponentType(job.component)}</p>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                      {formatDuration(job.durationSeconds)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {formatRelativeTime(job.createdTime)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={job.status} />
-                    </td>
-                  </tr>
-                ))
+                filtered.map((job: MultiProjectJob) => {
+                  const compName = getComponentName(job.component);
+                  const compType = getComponentType(job.component);
+                  const compIcon = getComponentIcon(job.component);
+                  const cfgName = job.config ? getConfigName(job.component, job.config) : 'Ad-hoc run';
+                  const typeLabel = TYPE_LABELS[compType] ?? compType;
+
+                  return (
+                    <tr
+                      key={`${job._projectId}-${job.id}`}
+                      onClick={() => {
+                        setActiveProject(job._projectId);
+                        navigate(`/jobs/${job.id}`);
+                      }}
+                      className="cursor-pointer hover:bg-gray-50"
+                    >
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-medium text-gray-700">{job._projectName}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          {compIcon && (
+                            <img src={compIcon} alt="" className="h-6 w-6 rounded" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{compName}</p>
+                            {typeLabel && (
+                              <p className="text-xs text-gray-400">{typeLabel}</p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm text-gray-700">{cfgName}</p>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                        {formatDuration(job.durationSeconds)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-mono text-gray-600">
+                        {formatCredits(calculateJobCredits(job.durationSeconds, getContainerSize((job as Record<string, unknown>).metrics), job.component))}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {formatRelativeTime(job.createdTime)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={job.status} />
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
