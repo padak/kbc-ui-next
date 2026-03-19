@@ -1,12 +1,17 @@
 // file: src/hooks/useEvents.ts
 // TanStack Query hooks for events. Supports polling for live updates.
-// Per-job events filtered by runId query. Global/table/bucket events.
+// Per-job events use useInfiniteQuery for cursor-based pagination (maxId).
 // Used by: EventsPage, JobDetailPage, TableDetailPage.
 // Polling: refetchInterval when enabled, auto-prepends new events.
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { eventsApi } from '@/api/events';
 import { useConnectionStore } from '@/stores/connection';
+import {
+  EVENTS_PAGE_SIZE,
+  EVENTS_POLL_INTERVAL_JOB,
+  EVENTS_POLL_INTERVAL_GLOBAL,
+} from '@/config/events';
 
 export function useEvents(params?: { q?: string; component?: string; limit?: number }) {
   const { isConnected, activeProjectId } = useConnectionStore();
@@ -15,20 +20,37 @@ export function useEvents(params?: { q?: string; component?: string; limit?: num
     queryKey: [activeProjectId, 'events', params],
     queryFn: () => eventsApi.listEvents(params),
     enabled: isConnected,
-    refetchInterval: 10_000,
+    refetchInterval: EVENTS_POLL_INTERVAL_GLOBAL,
   });
 }
 
-export function useJobEvents(jobId: string | undefined, _runId: string | undefined) {
+export function useJobEvents(
+  jobId: string | undefined,
+  _runId: string | undefined,
+  options?: { polling?: boolean },
+) {
   const { isConnected, activeProjectId } = useConnectionStore();
   // Legacy UI uses job.id as the runId parameter (not job.runId).
   // The API's runId query param is a dedicated filter, not a Lucene query.
 
-  return useQuery({
+  const polling = options?.polling !== false;
+
+  return useInfiniteQuery({
     queryKey: [activeProjectId, 'events', 'job', jobId],
-    queryFn: () => eventsApi.listEvents({ runId: jobId, limit: 200 }),
+    queryFn: ({ pageParam }) =>
+      eventsApi.listEvents({
+        runId: jobId,
+        limit: EVENTS_PAGE_SIZE,
+        ...(pageParam ? { maxId: pageParam } : {}),
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.length < EVENTS_PAGE_SIZE) return undefined;
+      const oldest = lastPage.at(-1);
+      return oldest?.uuid ?? oldest?.id ?? undefined;
+    },
     enabled: isConnected && !!jobId,
-    refetchInterval: 5_000,
+    refetchInterval: polling ? EVENTS_POLL_INTERVAL_JOB : false,
   });
 }
 

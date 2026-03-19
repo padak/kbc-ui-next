@@ -2,9 +2,9 @@
 // Terminal-style event log viewer. Shows events as a searchable, scrollable stream.
 // Supports live polling, type/source color coding, search with Ctrl+F,
 // copy all to clipboard, download as .log, expand for full JSON detail.
-// Used by: EventsPage (global), JobDetailPage (per-job), TableDetailPage (per-table).
+// Used by: JobDetailPage (per-job), TableDetailPage (per-table).
 
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import type { KeboolaEvent } from '@/api/events';
 
 // -- Event type styles --
@@ -247,6 +247,84 @@ function EventRow({ event, search }: { event: KeboolaEvent; search: string }) {
   );
 }
 
+// -- Seekbar component --
+
+function EventSeekBar({
+  fraction,
+  onSeek,
+  newestTime,
+  oldestTime,
+}: {
+  fraction: number;
+  onSeek: (f: number) => void;
+  newestTime: string;
+  oldestTime: string;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  function fractionFromEvent(e: React.MouseEvent | MouseEvent) {
+    const rect = trackRef.current?.getBoundingClientRect();
+    if (!rect) return 0;
+    return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  }
+
+  function handlePointerDown(e: React.PointerEvent) {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    onSeek(fractionFromEvent(e));
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (e.buttons === 0) return;
+    onSeek(fractionFromEvent(e));
+  }
+
+  return (
+    <div className="border-b border-gray-100 px-3 py-1 flex items-center gap-2">
+      {/* Jump to oldest (job start) */}
+      <button
+        type="button"
+        onClick={() => onSeek(0)}
+        className="shrink-0 text-[10px] text-gray-400 hover:text-gray-700 transition-colors font-mono"
+        title="Jump to oldest"
+      >
+        {oldestTime}
+      </button>
+
+      {/* Track */}
+      <div
+        ref={trackRef}
+        className="relative flex-1 h-3 cursor-pointer group"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+      >
+        {/* Rail */}
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[3px] rounded-full bg-gray-200 group-hover:bg-gray-300 transition-colors" />
+        {/* Filled portion */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 left-0 h-[3px] rounded-full bg-blue-400 group-hover:bg-blue-500 transition-colors"
+          style={{ width: `${fraction * 100}%` }}
+        />
+        {/* Thumb */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-blue-500 shadow-sm transition-transform group-hover:scale-125"
+          style={{ left: `calc(${fraction * 100}% - 6px)` }}
+        />
+      </div>
+
+      {/* Jump to newest (job end) */}
+      <button
+        type="button"
+        onClick={() => onSeek(1)}
+        className="shrink-0 text-[10px] text-gray-400 hover:text-gray-700 transition-colors font-mono"
+        title="Jump to newest"
+      >
+        {newestTime}
+      </button>
+    </div>
+  );
+}
+
 // -- Main component --
 
 type EventsViewerProps = {
@@ -257,6 +335,13 @@ type EventsViewerProps = {
   showSearch?: boolean;
   maxHeight?: string;
   emptyMessage?: string;
+  // Pagination (optional — backward compatible)
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  fetchNextPage?: () => void;
+  onJumpToStart?: () => void;
+  isJumpingToStart?: boolean;
+  totalLoadedCount?: number;
 };
 
 export function EventsViewer({
@@ -267,12 +352,68 @@ export function EventsViewer({
   showSearch = true,
   maxHeight = '600px',
   emptyMessage = 'No events.',
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+  onJumpToStart,
+  isJumpingToStart,
+  totalLoadedCount,
 }: EventsViewerProps) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<'all' | 'component' | 'storage'>('all');
   const [copied, setCopied] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const pendingScrollRef = useRef(false);
+  const wasJumpingRef = useRef(false);
+
+  // Auto-scroll to bottom when new pages are appended (Load More / Jump to Start)
+  useLayoutEffect(() => {
+    // Scroll during jump, on Load More, AND on the final render after jump completes
+    const justFinishedJump = wasJumpingRef.current && !isJumpingToStart;
+    wasJumpingRef.current = !!isJumpingToStart;
+
+    if (pendingScrollRef.current || isJumpingToStart || justFinishedJump) {
+      pendingScrollRef.current = false;
+      const el = scrollContainerRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+  }, [events.length, isJumpingToStart]);
+
+  const handleLoadMore = useCallback(() => {
+    pendingScrollRef.current = true;
+    fetchNextPage?.();
+  }, [fetchNextPage]);
+
+  // Seekbar: track scroll position as 0..1
+  const [scrollFraction, setScrollFraction] = useState(0);
+  const isSeekingRef = useRef(false);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    function handleScroll() {
+      if (isSeekingRef.current) return;
+      const el = scrollContainerRef.current;
+      if (!el) return;
+      const max = el.scrollHeight - el.clientHeight;
+      setScrollFraction(max > 0 ? el.scrollTop / max : 0);
+    }
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleSeek = useCallback((fraction: number) => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    isSeekingRef.current = true;
+    const max = el.scrollHeight - el.clientHeight;
+    el.scrollTop = fraction * max;
+    setScrollFraction(fraction);
+    // Release after a tick so scroll listener doesn't fight back
+    requestAnimationFrame(() => { isSeekingRef.current = false; });
+  }, []);
 
   // Ctrl+F / Cmd+F focuses search
   useEffect(() => {
@@ -346,7 +487,9 @@ export function EventsViewer({
       <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-3 py-2">
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-          <span className="text-xs text-gray-400">{filtered.length}</span>
+          <span className="text-xs text-gray-400">
+            {filtered.length}{hasNextPage ? '+' : ''}
+          </span>
 
           {/* Type filter pills */}
           <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
@@ -396,6 +539,23 @@ export function EventsViewer({
         </div>
 
         <div className="flex items-center gap-1">
+          {/* Load All — loads all remaining pages and scrolls to oldest event */}
+          {hasNextPage && !isJumpingToStart && onJumpToStart && (
+            <button
+              type="button"
+              onClick={onJumpToStart}
+              className="rounded px-2 py-1 text-[10px] font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+              title="Load all events from this job"
+            >
+              Load All
+            </button>
+          )}
+          {isJumpingToStart && (
+            <span className="px-2 py-1 text-[10px] text-gray-500">
+              Loading {totalLoadedCount ?? events.length}...
+            </span>
+          )}
+          {(hasNextPage || isJumpingToStart) && <span className="text-gray-200">|</span>}
           {copied ? (
             <span className="px-2 py-1 text-[10px] text-green-600">Copied!</span>
           ) : (
@@ -460,8 +620,18 @@ export function EventsViewer({
         </div>
       )}
 
+      {/* Seekbar — left=oldest (job start), right=newest (job end) */}
+      {filtered.length > 0 && (
+        <EventSeekBar
+          fraction={1 - scrollFraction}
+          onSeek={(f) => handleSeek(1 - f)}
+          newestTime={formatTime(filtered[0]!.created)}
+          oldestTime={formatTime(filtered[filtered.length - 1]!.created)}
+        />
+      )}
+
       {/* Event stream */}
-      <div className="overflow-y-auto" style={{ maxHeight }}>
+      <div ref={scrollContainerRef} className="overflow-y-auto" style={{ maxHeight }}>
         {isLoading && events.length === 0 && (
           <div className="px-4 py-8 text-center text-xs text-gray-400">Loading events...</div>
         )}
@@ -477,6 +647,37 @@ export function EventsViewer({
         {filtered.map((event) => (
           <EventRow key={event.uuid ?? event.id ?? event.created} event={event} search={search} />
         ))}
+
+        {/* Pagination footer */}
+        {(hasNextPage || isJumpingToStart) && (
+          <div className="border-t border-gray-200 bg-gray-50 px-3 py-2 flex items-center justify-center gap-3">
+            {isJumpingToStart ? (
+              <span className="text-xs text-gray-500">
+                Loading... {totalLoadedCount ?? events.length} events so far
+              </span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  disabled={isFetchingNextPage}
+                  className="rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isFetchingNextPage ? 'Loading...' : 'Load More'}
+                </button>
+                {onJumpToStart && (
+                  <button
+                    type="button"
+                    onClick={onJumpToStart}
+                    className="rounded-md px-3 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+                  >
+                    Load All
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
