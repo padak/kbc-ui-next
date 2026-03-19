@@ -19,13 +19,19 @@ export function useEvents(params?: { q?: string; component?: string; limit?: num
   });
 }
 
-export function useJobEvents(runId: string | undefined) {
+export function useJobEvents(jobId: string | undefined, runId: string | undefined) {
   const { isConnected, activeProjectId } = useConnectionStore();
+  // Orchestrator-spawned jobs: runId is the parent orchestrator's runId, not the jobId.
+  // Storage events use the child job's ID as runId.
+  // Search for both to catch all events.
+  const searchQuery = runId && runId !== jobId
+    ? `runId:${jobId} OR runId:${runId}`
+    : `runId:${jobId}`;
 
   return useQuery({
-    queryKey: [activeProjectId, 'events', 'job', runId],
-    queryFn: () => eventsApi.listEvents({ q: `runId:${runId}`, limit: 200 }),
-    enabled: isConnected && !!runId,
+    queryKey: [activeProjectId, 'events', 'job', jobId, runId],
+    queryFn: () => eventsApi.listEvents({ q: searchQuery, limit: 200 }),
+    enabled: isConnected && !!jobId,
     refetchInterval: 5_000,
   });
 }

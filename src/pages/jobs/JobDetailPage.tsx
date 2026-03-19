@@ -64,7 +64,7 @@ export function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const { data: job, isLoading, error } = useJob(jobId ?? '');
-  const { data: jobEvents, isLoading: eventsLoading, error: eventsError } = useJobEvents(job?.runId);
+  const { data: jobEvents, isLoading: eventsLoading, error: eventsError } = useJobEvents(job?.id, job?.runId);
   const [layout, setLayout] = useState<LayoutId>(getSavedLayout);
   const [voted, setVoted] = useState(false);
 
