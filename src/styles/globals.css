@@ -339,6 +339,10 @@
   outline-offset: 2px;
 }
 
+[data-theme="keboola"] .kbc-command-dialog *:focus-visible {
+  outline: none;
+}
+
 /* ── Scrollbar ────────────────────────────────────────────────────────── */
 
 [data-theme="keboola"] ::-webkit-scrollbar {
