@@ -102,12 +102,21 @@ function getInlineMetrics(event: KeboolaEvent): InlineMetric[] {
     if (importDur != null) metrics.push({ label: 'time', value: `${importDur.toFixed(1)}s`, color: 'text-gray-400' });
   }
 
-  // Import started: columns count
+  // Import started: columns count, file size, incremental flag
   if (event.event === 'storage.tableImportStarted') {
     const cols = params?.columns as string[] | undefined;
     if (cols?.length) metrics.push({ label: 'cols', value: String(cols.length), color: 'text-purple-500' });
+    const source = params?.source as Record<string, unknown> | undefined;
+    const fileSize = source?.fileSize as number | undefined;
+    if (fileSize) metrics.push({ label: 'file', value: formatBytes(fileSize), color: 'text-blue-400' });
     const incremental = params?.incremental;
     if (incremental === true) metrics.push({ label: '', value: 'incr', color: 'text-orange-500' });
+  }
+
+  // File uploaded: file size
+  if (event.event === 'storage.fileUploaded') {
+    const fileId = params?.fileId as number | undefined;
+    if (fileId) metrics.push({ label: 'id', value: String(fileId), color: 'text-gray-400' });
   }
 
   // Workspace created: backend type
@@ -116,7 +125,26 @@ function getInlineMetrics(event: KeboolaEvent): InlineMetric[] {
     if (backend) metrics.push({ label: '', value: backend, color: 'text-cyan-600' });
   }
 
+  // Waiting for N storage jobs (parse from message)
+  const waitingMatch = event.message.match(/Waiting for (\d+) Storage jobs/);
+  if (waitingMatch) {
+    metrics.push({ label: 'pending', value: waitingMatch[1]!, color: 'text-orange-500' });
+  }
+
+  // Finished component row progress (parse from message)
+  const rowMatch = event.message.match(/row (\d+) of (\d+)/);
+  if (rowMatch) {
+    metrics.push({ label: '', value: `${rowMatch[1]}/${rowMatch[2]}`, color: 'text-gray-400' });
+  }
+
   return metrics;
+}
+
+// -- Mask sensitive tokens in event messages --
+
+function maskSensitiveData(text: string): string {
+  // Mask JWT/Bearer tokens (Authorization: eyJ...)
+  return text.replace(/Authorization:\s*(?:Bearer\s+)?eyJ[A-Za-z0-9._-]{20,}/g, 'Authorization: [MASKED]');
 }
 
 // -- Single event row --
@@ -126,7 +154,7 @@ function EventRow({ event, search }: { event: KeboolaEvent; search: string }) {
   const [copied, setCopied] = useState(false);
   const style = TYPE_STYLES[event.type] ?? TYPE_STYLES.info!;
   const isStorage = isStorageEvent(event);
-  const message = event.message || event.event;
+  const message = maskSensitiveData(event.message || event.event);
   const inlineMetrics = getInlineMetrics(event);
 
   // Build detail object (skip empty fields)
