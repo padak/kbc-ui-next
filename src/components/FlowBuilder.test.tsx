@@ -8,8 +8,11 @@ import { describe, it, expect } from 'vitest';
 import { parseConfiguration, estimateNodeHeight } from './FlowBuilder';
 import type { RawPhase, RawTask } from './FlowBuilder';
 
+// Must match constants in FlowBuilder.tsx
 const HEADER_HEIGHT = 36;
-const TASK_HEIGHT = 36;
+const TASK_HEIGHT = 48;
+const TASK_GAP = 8;
+const TASK_COLS = 3;
 const PADDING = 16;
 const EMPTY_HEIGHT = 40;
 
@@ -19,11 +22,14 @@ describe('estimateNodeHeight', () => {
   });
 
   it('returns correct height for 1 task', () => {
+    // 1 task = 1 row, no gaps
     expect(estimateNodeHeight(1)).toBe(HEADER_HEIGHT + TASK_HEIGHT + PADDING);
   });
 
   it('returns correct height for 3 tasks', () => {
-    expect(estimateNodeHeight(3)).toBe(HEADER_HEIGHT + 3 * TASK_HEIGHT + PADDING);
+    // 3 tasks = 1 row (TASK_COLS=3), no gaps
+    const rows = Math.ceil(3 / TASK_COLS);
+    expect(estimateNodeHeight(3)).toBe(HEADER_HEIGHT + rows * TASK_HEIGHT + (rows - 1) * TASK_GAP + PADDING);
   });
 });
 

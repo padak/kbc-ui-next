@@ -4,8 +4,16 @@
 // Used by: projectLoader.ts, SetupPage.tsx.
 // In dev mode, saves via Vite middleware. JSON served from public/.
 
+type StandaloneProjectConfig = {
+  id: string;
+  name: string;
+  stack: string;
+  token: string;
+};
+
 type ProjectConfig = {
   organizations: OrgConfig[];
+  standaloneProjects?: StandaloneProjectConfig[];
 };
 
 type OrgConfig = {
@@ -21,7 +29,7 @@ type OrgProjectConfig = {
   token: string;
 };
 
-export type { ProjectConfig, OrgConfig, OrgProjectConfig };
+export type { ProjectConfig, OrgConfig, OrgProjectConfig, StandaloneProjectConfig };
 
 export async function loadProjectConfig(): Promise<ProjectConfig> {
   // Try loading from the file (served by Vite in dev)
@@ -45,4 +53,26 @@ export async function saveProjectConfig(config: ProjectConfig): Promise<void> {
   if (!response.ok) {
     throw new Error('Failed to save projects configuration');
   }
+}
+
+export async function addStandaloneProject(project: StandaloneProjectConfig): Promise<void> {
+  const config = await loadProjectConfig();
+  const existing = config.standaloneProjects ?? [];
+  const normalizedStack = project.stack.replace(/\/+$/, '');
+  // Deduplicate by id+stack — update token if already exists
+  const filtered = existing.filter(
+    (p) => !(p.id === project.id && p.stack.replace(/\/+$/, '') === normalizedStack),
+  );
+  filtered.push({ ...project, stack: normalizedStack });
+  await saveProjectConfig({ ...config, standaloneProjects: filtered });
+}
+
+export async function removeStandaloneProject(projectId: string, stack: string): Promise<void> {
+  const config = await loadProjectConfig();
+  const existing = config.standaloneProjects ?? [];
+  const normalizedStack = stack.replace(/\/+$/, '');
+  const filtered = existing.filter(
+    (p) => !(p.id === projectId && p.stack.replace(/\/+$/, '') === normalizedStack),
+  );
+  await saveProjectConfig({ ...config, standaloneProjects: filtered });
 }
