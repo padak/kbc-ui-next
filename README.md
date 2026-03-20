@@ -58,6 +58,15 @@ Generic JSON Schema to form renderer for all component configurations. Supports 
 ### Storage Browser
 Browse buckets and tables with metadata, column details, data preview. Filter by stage (in/out), linked/shared status. Shared buckets show source project with one-click navigation.
 
+### Markdown Documentation
+Configuration descriptions render as rich Markdown with full GFM support:
+- **Fullscreen reader** — click any description to open a responsive modal with prose typography
+- **Mermaid diagrams** — fenced `mermaid` code blocks render as interactive SVG diagrams (lazy-loaded)
+- **GFM tables** — pipe tables render as styled HTML tables via remark-gfm
+- **Code blocks** — language-tagged blocks get dark theme, plain blocks get light theme
+- **Copy context for AI** — one-click copies configuration context (JSON, rows, component info) to clipboard for AI-assisted documentation drafting
+- **Inline editor** — Write/Preview/Side-by-side modes with toolbar (bold, italic, heading, link, code, mermaid template)
+
 ### Design System
 Keboola Product Design System from Figma with 10 color palettes, Inter typography, and component tokens. Toggle between default and branded theme at runtime.
 
