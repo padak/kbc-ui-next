@@ -1,5 +1,7 @@
 # kbc-ui-next
 
+> **Warning: Not production-ready.** This app is designed for local development use. It stores API tokens in localStorage and has no server-side session management. A security audit identified several issues that must be resolved before public hosting — see [Issue #4](https://github.com/padak/kbc-ui-next/issues/4) and `docs/AGENT-REPORTS/SECURITY.md`.
+
 Greenfield rewrite of the Keboola Connection UI.
 
 ## Quick Start
