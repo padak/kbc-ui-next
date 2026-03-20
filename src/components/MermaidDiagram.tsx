@@ -84,7 +84,7 @@ export function MermaidDiagram({ source }: MermaidDiagramProps) {
 
   return (
     <div
-      className="overflow-x-auto rounded-md border border-gray-200 bg-white p-4"
+      className="overflow-x-auto rounded-md bg-white p-2"
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );

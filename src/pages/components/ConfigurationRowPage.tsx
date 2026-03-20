@@ -70,6 +70,7 @@ export function ConfigurationRowPage() {
           ) : (
             <DescriptionDisplay
               content={row.description || `Row ${row.id}`}
+              title={row.name || row.id}
               onEdit={() => setEditingDescription(true)}
             />
           )

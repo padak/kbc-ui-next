@@ -1,11 +1,12 @@
 // file: src/components/MarkdownViewer.tsx
 // Read-only Markdown renderer with Tailwind-styled elements and Mermaid support.
-// Uses react-markdown with custom components for design-token styling.
+// Uses react-markdown + remark-gfm for tables, strikethrough, autolinks, task lists.
 // Used by: DescriptionDisplay, DescriptionEditor (preview mode).
 // Mermaid diagrams are lazy-loaded only when ```mermaid blocks are detected.
 
 import { lazy, Suspense } from 'react';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Lazy-load MermaidDiagram (same pattern as SqlEditor in TransformationBlocks.tsx)
 const mermaidImport = () => import('@/components/MermaidDiagram');
@@ -70,23 +71,51 @@ const markdownComponents = {
     <hr className="my-4 border-neutral-200" {...props} />
   ),
   table: ({ children, ...props }: React.ComponentProps<'table'>) => (
-    <div className="mb-2 overflow-x-auto">
+    <div className="mb-3 overflow-x-auto rounded-md border border-neutral-200">
       <table className="min-w-full divide-y divide-neutral-200 text-sm" {...props}>{children}</table>
     </div>
   ),
+  thead: ({ children, ...props }: React.ComponentProps<'thead'>) => (
+    <thead className="bg-neutral-50" {...props}>{children}</thead>
+  ),
   th: ({ children, ...props }: React.ComponentProps<'th'>) => (
-    <th className="bg-neutral-50 px-3 py-2 text-left text-xs font-medium uppercase text-neutral-400" {...props}>
+    <th className="border-b border-neutral-200 px-3 py-2 text-left text-xs font-semibold text-neutral-600" {...props}>
       {children}
     </th>
   ),
   td: ({ children, ...props }: React.ComponentProps<'td'>) => (
-    <td className="px-3 py-2 text-neutral-700" {...props}>{children}</td>
+    <td className="border-b border-neutral-100 px-3 py-2 text-neutral-700" {...props}>{children}</td>
   ),
-  pre: ({ children, ...props }: React.ComponentProps<'pre'>) => (
-    <pre className="mb-2 overflow-x-auto rounded-md bg-neutral-800 p-3 text-sm" {...props}>
-      {children}
-    </pre>
-  ),
+  // Code blocks: dark bg for language-tagged, light bg for plain/ASCII art, transparent for mermaid
+  pre: ({ children, ...props }: React.ComponentProps<'pre'>) => {
+    const codeChild = Array.isArray(children) ? children[0] : children;
+    const codeClassName = codeChild &&
+      typeof codeChild === 'object' &&
+      'props' in codeChild
+      ? codeChild.props?.className ?? ''
+      : '';
+
+    // Mermaid blocks: no pre styling — MermaidDiagram handles its own container
+    if (codeClassName === 'language-mermaid') {
+      return <>{children}</>;
+    }
+
+    // Language-tagged code: dark background
+    if (/language-/.test(codeClassName)) {
+      return (
+        <pre className="mb-3 overflow-x-auto rounded-md bg-neutral-800 p-3 text-sm" {...props}>
+          {children}
+        </pre>
+      );
+    }
+
+    // Plain code blocks (ASCII art, etc.): light background
+    return (
+      <pre className="mb-3 overflow-x-auto rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-700" {...props}>
+        {children}
+      </pre>
+    );
+  },
   code: ({
     children,
     className,
@@ -117,7 +146,7 @@ const markdownComponents = {
       );
     }
 
-    // Other language code blocks (inside <pre>)
+    // Language-tagged code blocks (inside <pre>) — light text on dark bg
     return (
       <code className={`text-xs font-mono text-green-300 ${className}`} {...props}>
         {children}
@@ -131,7 +160,7 @@ export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
 
   return (
     <div className={`kbc-markdown ${className ?? ''}`}>
-      <Markdown components={markdownComponents}>{content}</Markdown>
+      <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{content}</Markdown>
     </div>
   );
 }

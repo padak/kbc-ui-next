@@ -23,6 +23,7 @@ import { useUpdateConfiguration, useUpdateConfigurationRow, useCopyConfiguration
 import { useComponentLookup } from '@/hooks/useComponentLookup';
 import { getComponentSchema } from '@/config/component-schemas';
 import { flowToMermaid, flowToText } from '@/lib/flowToMermaid';
+import type { ConfigContext } from '@/components/DescriptionModal';
 import { formatDate } from '@/lib/formatters';
 import { stripMarkdown } from '@/lib/stripMarkdown';
 import type { ConfigurationRow } from '@/api/schemas';
@@ -220,7 +221,21 @@ export function ConfigurationDetailPage() {
           ) : (
             <DescriptionDisplay
               content={config.description}
+              title={config.name}
               onEdit={() => setEditingDescription(true)}
+              configContext={{
+                componentId: componentId ?? '',
+                configId: configId ?? '',
+                configName: config.name,
+                componentName: component?.name,
+                description: config.description,
+                configuration: config.configuration,
+                rows: config.rows.map((r) => ({
+                  id: r.id,
+                  name: r.name,
+                  description: r.description,
+                })),
+              } satisfies ConfigContext}
             />
           )
         }

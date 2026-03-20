@@ -181,19 +181,27 @@ Everything else from the legacy UI.
 
 **Rich Description Editor** (Markdown + Mermaid):
 
-Configuration descriptions support Markdown in Keboola. Currently we only have plain-text inline edit. Need full Markdown authoring and rendering with Mermaid diagram support.
+Configuration descriptions support Markdown in Keboola. Full Markdown authoring and rendering with Mermaid diagram support.
 
 *Rendering (read mode):*
-- [ ] **Markdown rendering** - render config description as Markdown (headings, bold, italic, lists, links, code blocks, tables). Use a React Markdown library (react-markdown or similar) with sanitization.
-- [ ] **Mermaid diagrams** - render fenced code blocks tagged `mermaid` as interactive diagrams (flowcharts, sequence diagrams, ER diagrams). Use mermaid.js for client-side rendering. Lazy-loaded to avoid bundle bloat.
-- [ ] **Description display on config detail** - rendered Markdown below config name, collapsible if long (>5 lines collapsed preview with "Show more")
-- [ ] **Description in config listings** - truncated plain-text preview in table rows (strip Markdown formatting)
+- [x] **Markdown rendering** - react-markdown with custom Tailwind-styled components (MarkdownViewer.tsx)
+- [x] **Mermaid diagrams** - lazy-loaded mermaid.js for fenced `mermaid` code blocks (MermaidDiagram.tsx)
+- [x] **Description display on config detail** - compact preview card below config name. Click opens fullscreen modal. No inline expand (avoids pushing page content down).
+- [x] **Description in config listings** - stripMarkdown() preview in table rows
+- [x] **Fullscreen description modal** - near-fullscreen overlay with proper prose typography, full-size Mermaid diagrams, Edit button, Escape to close (DescriptionModal.tsx)
 
 *Editing (write mode):*
-- [ ] **Markdown editor** - click description to open editor. Textarea with monospace font, preview toggle (edit | preview | side-by-side). Toolbar with common formatting buttons (bold, italic, heading, link, code, list, mermaid template).
-- [ ] **Mermaid live preview** - in preview/side-by-side mode, Mermaid blocks render as diagrams in real-time
-- [ ] **Save description** - PUT to Storage API, optimistic update, toast on success
-- [ ] **Row descriptions** - same Markdown rendering and editing for config row descriptions
+- [x] **Markdown editor** - inline editor with Write/Preview/Side-by-side modes, toolbar (bold, italic, heading, link, code, list, mermaid template). Side-by-side is the best UX for longer content.
+- [x] **Mermaid live preview** - Mermaid blocks render as diagrams in preview/side-by-side mode
+- [x] **Save description** - PUT to Storage API via updateConfiguration/updateConfigurationRow mutations
+- [x] **Row descriptions** - same rendering and editing on ConfigurationRowPage
+
+*UX improvements (TODO):*
+- [ ] **Editor opens in modal** - instead of inline replacement, open editor in a modal dialog (same size as reader modal) so it has proper width. Inline "Write" mode is too narrow.
+- [ ] **"Copy context for AI" button** - one click copies configuration context (config JSON, component info, job history summary, output tables) to clipboard. User pastes to Claude → gets back documentation draft. Motivates documentation by making it effortless.
+- [ ] **Documentation CTA** - when description is empty, show a prominent "Document this configuration" card with AI assist option, not just a subtle "Add description..." link
+- [ ] **Breadcrumb navigation** - `Components > Generic Extractor > Calendarific` at top of detail pages. Essential for orientation in deep hierarchies.
+- [ ] **Project + stack in URL** - e.g. `/p/336/components/...` so URL reveals which project/stack is active. Enables shareable links, bookmarks, and proper browser history across project switches.
 
 **Transformation Explain & Lineage** (Fisa's tip):
 
