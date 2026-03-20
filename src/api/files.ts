@@ -1,15 +1,14 @@
 // file: src/api/files.ts
 // Storage Files API — prepare upload, upload blob, get file detail.
 // Used by: DescriptionEditor (image paste upload).
-// Upload flow: prepare → upload to cloud → get signed URL for rendering.
-// Files are tagged with "documentation" + "kbc-ui-next" for identification.
+// Upload flow: prepare → upload to cloud (S3/Azure/GCS) → get signed URL for rendering.
+// Provider-specific upload params: uploadParams (AWS), absUploadParams (Azure), gcsUploadParams (GCP).
 
 import { z } from 'zod';
 import { fetchApi } from '@/api/client';
-import { useConnectionStore } from '@/stores/connection';
 import { FILE_UPLOAD_TAGS } from '@/config/markdown';
 
-// -- Schemas --
+// -- Schemas (flexible — each provider returns different upload param keys) --
 
 const fileUploadPrepareSchema = z
   .object({
@@ -18,28 +17,12 @@ const fileUploadPrepareSchema = z
     name: z.string(),
     provider: z.string(),
     region: z.string().optional(),
-    uploadParams: z
-      .object({
-        key: z.string().optional(),
-        bucket: z.string().optional(),
-        acl: z.string().optional(),
-        credentials: z
-          .object({
-            AccessKeyId: z.string().optional(),
-            SecretAccessKey: z.string().optional(),
-            SessionToken: z.string().optional(),
-          })
-          .passthrough()
-          .optional(),
-        // Azure
-        blobName: z.string().optional(),
-        container: z.string().optional(),
-        accountName: z.string().optional(),
-        // GCS
-        bucket_name: z.string().optional(),
-        object_name: z.string().optional(),
-      })
-      .passthrough(),
+    // AWS: uploadParams
+    uploadParams: z.record(z.string(), z.unknown()).optional(),
+    // Azure: absUploadParams
+    absUploadParams: z.record(z.string(), z.unknown()).optional(),
+    // GCP: gcsUploadParams
+    gcsUploadParams: z.record(z.string(), z.unknown()).optional(),
   })
   .passthrough();
 
@@ -83,150 +66,146 @@ export async function getFileDetail(fileId: number): Promise<FileDetail> {
   return fetchApi(`/files/${fileId}`, fileDetailSchema);
 }
 
-// -- Upload to cloud storage --
+// -- Upload to cloud storage (provider-specific) --
 
 export async function uploadFileBlob(
   prepareResult: FileUploadPrepareResult,
   blob: Blob,
   fileName: string,
 ): Promise<void> {
-  const { provider, uploadParams } = prepareResult;
+  const { provider } = prepareResult;
 
-  if (provider === 'aws') {
-    await uploadToS3(uploadParams, blob, fileName);
-  } else if (provider === 'azure') {
-    await uploadToAzure(uploadParams, blob);
-  } else if (provider === 'gcp') {
-    await uploadToGcs(uploadParams, blob);
-  } else {
-    throw new Error(`Unsupported file provider: ${provider}`);
+  switch (provider) {
+    case 'aws':
+      await uploadToS3(prepareResult, blob, fileName);
+      break;
+    case 'azure':
+      await uploadToAzure(prepareResult, blob, fileName);
+      break;
+    case 'gcp':
+      await uploadToGcs(prepareResult, blob);
+      break;
+    default:
+      throw new Error(`Unsupported file provider: ${provider}`);
   }
 }
 
+// -- AWS S3 upload using federation token credentials --
+
 async function uploadToS3(
-  uploadParams: FileUploadPrepareResult['uploadParams'],
+  prepareResult: FileUploadPrepareResult,
   blob: Blob,
   fileName: string,
 ): Promise<void> {
-  // Use presigned form upload via S3 POST (simplest browser approach)
-  // Build the S3 URL from bucket and region
-  const bucket = uploadParams.bucket!;
-  const key = uploadParams.key!;
-  const credentials = uploadParams.credentials!;
-  const acl = uploadParams.acl ?? 'private';
+  const params = prepareResult.uploadParams as Record<string, unknown>;
+  if (!params) throw new Error('Missing uploadParams for S3 upload');
 
-  // For S3, use a direct PUT with signed headers
-  const { stackUrl } = useConnectionStore.getState();
-  const region = new URL(stackUrl!).hostname.includes('eu-central')
-    ? 'eu-central-1'
-    : 'us-east-1';
+  const bucket = params.bucket as string;
+  const key = params.key as string;
+  const acl = (params.acl as string) ?? 'private';
+  const credentials = params.credentials as Record<string, string> | undefined;
+  if (!credentials?.SessionToken || !credentials?.AccessKeyId) {
+    throw new Error('Missing S3 credentials (SessionToken/AccessKeyId)');
+  }
 
-  // Use the AWS SDK-free approach: create a presigned PUT via the raw S3 API
-  // Actually, the simplest approach is to use the federation token credentials
-  // with fetch + AWS Signature V4. But that's complex.
-  //
-  // Alternative: use the url field from prepare response which is a signed download URL.
-  // For upload, we need to construct the S3 endpoint and PUT with the temp credentials.
-  //
-  // Simplest approach: use XMLHttpRequest with the S3 endpoint
-  const s3Url = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
-
-  // AWS Signature V4 is complex for browser. Use a simpler approach:
-  // The Storage API actually accepts a direct upload via a different endpoint.
-  // Let's use the Keboola-specific upload endpoint instead.
-  //
-  // Actually, re-reading the PHP client more carefully:
-  // For small files, we can use the Storage API's own upload mechanism.
-  // The prepare response `url` field is a SIGNED URL that can be used for both
-  // download and upload on some providers.
-  //
-  // For maximum compatibility, let's upload via the Storage API proxy.
-  // POST /v2/storage/files/{id}/upload with the file as form-data.
-
-  // FALLBACK: Direct S3 PUT with AWS4 auth is too complex for browser without SDK.
-  // Use the simple approach: upload as form-data to S3
+  // S3 form-based POST upload (works from browser without AWS SDK)
   const formData = new FormData();
   formData.append('key', key);
   formData.append('acl', acl);
-  formData.append('AWSAccessKeyId', credentials.AccessKeyId!);
-  formData.append('policy', ''); // Not needed with federation token
-  formData.append('x-amz-security-token', credentials.SessionToken!);
-  formData.append('x-amz-credential', credentials.AccessKeyId!);
   formData.append('Content-Type', blob.type || 'application/octet-stream');
+  formData.append('x-amz-security-token', credentials.SessionToken);
+  formData.append('x-amz-credential', credentials.AccessKeyId);
   formData.append('file', blob, fileName);
 
-  // S3 POST upload endpoint
-  const s3PostUrl = `https://${bucket}.s3.amazonaws.com/`;
+  const s3Url = `https://${bucket}.s3.amazonaws.com/`;
 
-  const response = await fetch(s3PostUrl, {
+  const response = await fetch(s3Url, {
     method: 'POST',
     body: formData,
   });
 
-  if (!response.ok) {
-    // Fallback: try PUT with X-Amz headers
-    const putResponse = await fetch(s3Url, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': blob.type || 'application/octet-stream',
-        'x-amz-acl': acl,
-        'x-amz-security-token': credentials.SessionToken!,
-      },
-      body: blob,
-    });
-    if (!putResponse.ok) {
-      throw new Error(`S3 upload failed: ${putResponse.status} ${putResponse.statusText}`);
-    }
+  if (!response.ok && response.status !== 204) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`S3 upload failed (${response.status}): ${text}`);
   }
 }
 
+// -- Azure Blob Storage upload using SAS connection string --
+
 async function uploadToAzure(
-  uploadParams: FileUploadPrepareResult['uploadParams'],
+  prepareResult: FileUploadPrepareResult,
   blob: Blob,
+  fileName: string,
 ): Promise<void> {
-  // Azure Blob Storage uses a SAS URL from uploadParams
-  const accountName = uploadParams.accountName;
-  const container = uploadParams.container;
-  const blobName = uploadParams.blobName;
+  const params = prepareResult.absUploadParams as Record<string, unknown>;
+  if (!params) throw new Error('Missing absUploadParams for Azure upload');
 
-  // The uploadParams should contain a SAS token or URL
-  // Azure upload is a simple PUT to the blob URL
-  const sasUrl = `https://${accountName}.blob.core.windows.net/${container}/${blobName}`;
+  const container = params.container as string;
+  const blobName = params.blobName as string;
+  const absCredentials = params.absCredentials as Record<string, string>;
+  const sasConnectionString = absCredentials?.SASConnectionString;
 
-  const response = await fetch(sasUrl, {
+  if (!sasConnectionString) throw new Error('Missing SASConnectionString for Azure upload');
+
+  // Parse the SAS connection string to get the blob endpoint and SAS token
+  const blobEndpointMatch = sasConnectionString.match(/BlobEndpoint=([^;]+)/);
+  const sasTokenMatch = sasConnectionString.match(/SharedAccessSignature=(.+)$/);
+
+  if (!blobEndpointMatch || !sasTokenMatch) {
+    throw new Error('Cannot parse Azure SAS connection string');
+  }
+
+  const blobEndpoint = blobEndpointMatch[1];
+  const sasToken = sasTokenMatch[1];
+
+  const uploadUrl = `${blobEndpoint}/${container}/${blobName}?${sasToken}`;
+
+  const response = await fetch(uploadUrl, {
     method: 'PUT',
     headers: {
       'Content-Type': blob.type || 'application/octet-stream',
       'x-ms-blob-type': 'BlockBlob',
+      'Content-Disposition': `attachment; filename=${fileName}`,
     },
     body: blob,
   });
 
   if (!response.ok) {
-    throw new Error(`Azure upload failed: ${response.status} ${response.statusText}`);
+    const text = await response.text().catch(() => '');
+    throw new Error(`Azure upload failed (${response.status}): ${text}`);
   }
 }
 
+// -- Google Cloud Storage upload using OAuth2 access token --
+
 async function uploadToGcs(
-  uploadParams: FileUploadPrepareResult['uploadParams'],
+  prepareResult: FileUploadPrepareResult,
   blob: Blob,
 ): Promise<void> {
-  // GCS uses a resumable upload URL or signed URL
-  const bucketName = uploadParams.bucket_name ?? uploadParams.bucket;
-  const objectName = uploadParams.object_name ?? uploadParams.key;
+  const params = prepareResult.gcsUploadParams as Record<string, unknown>;
+  if (!params) throw new Error('Missing gcsUploadParams for GCS upload');
 
-  const gcsUrl = `https://storage.googleapis.com/upload/storage/v1/b/${bucketName}/o?uploadType=media&name=${encodeURIComponent(objectName!)}`;
+  const bucket = params.bucket as string;
+  const key = params.key as string;
+  const accessToken = params.access_token as string;
+
+  if (!accessToken) throw new Error('Missing access_token for GCS upload');
+
+  // GCS JSON API upload
+  const gcsUrl = `https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(bucket)}/o?uploadType=media&name=${encodeURIComponent(key)}`;
 
   const response = await fetch(gcsUrl, {
     method: 'POST',
     headers: {
       'Content-Type': blob.type || 'application/octet-stream',
+      'Authorization': `Bearer ${accessToken}`,
     },
     body: blob,
   });
 
   if (!response.ok) {
-    throw new Error(`GCS upload failed: ${response.status} ${response.statusText}`);
+    const text = await response.text().catch(() => '');
+    throw new Error(`GCS upload failed (${response.status}): ${text}`);
   }
 }
 
