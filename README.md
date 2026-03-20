@@ -63,11 +63,13 @@ Browse buckets and tables with metadata, column details, data preview. Filter by
 
 ### Markdown Documentation
 Configuration descriptions render as rich Markdown with full GFM support:
-- **Fullscreen reader** — click any description to open a responsive modal with prose typography
-- **Mermaid diagrams** — fenced `mermaid` code blocks render as interactive SVG diagrams (lazy-loaded)
+- **Fullscreen reader** — click any description to open a responsive modal with prose typography (adapts to ultrawide monitors)
+- **Mermaid diagrams** — fenced `mermaid` code blocks render as interactive SVG diagrams (lazy-loaded, borderless)
 - **GFM tables** — pipe tables render as styled HTML tables via remark-gfm
-- **Code blocks** — language-tagged blocks get dark theme, plain blocks get light theme
+- **Code blocks** — language-tagged blocks get dark theme, plain/ASCII art blocks get light theme
+- **Image paste** — Ctrl+V screenshots directly into the editor. Images upload to Storage Files API (tagged `documentation` + `kbc-ui-next`, permanent) and render inline via signed URLs. Supports S3, Azure Blob, and GCS.
 - **Copy context for AI** — one-click copies configuration context (JSON, rows, component info) to clipboard for AI-assisted documentation drafting
+- **Documentation card** — compact preview with "View full documentation" link, no inline expand (page stays stable)
 - **Inline editor** — Write/Preview/Side-by-side modes with toolbar (bold, italic, heading, link, code, mermaid template)
 
 ### Design System
