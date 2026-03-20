@@ -27,6 +27,7 @@ The app connects directly to a Keboola stack. You need:
 
 You can either:
 - **Organization setup** (`/setup`) - Use a Management API token to discover and register all projects in an organization. Tokens are created automatically and saved to `projects.secret.json`.
+- **Remember single project** - Connect manually with a Storage API token and check "Remember this project". The connection is saved to `projects.secret.json` and appears as a quick-reconnect card on the login screen. Remove saved projects with the "x" button on the card.
 - Set `VITE_STACK_URL` and `VITE_STORAGE_TOKEN` in `.env.local` (auto-fills the connect form)
 - Enter them manually on the connect page at startup
 
