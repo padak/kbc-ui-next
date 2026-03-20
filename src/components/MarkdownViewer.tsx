@@ -4,9 +4,10 @@
 // Used by: DescriptionDisplay, DescriptionEditor (preview mode).
 // Mermaid diagrams are lazy-loaded only when ```mermaid blocks are detected.
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { KBC_FILE_PROTOCOL } from '@/config/markdown';
 
 // Lazy-load MermaidDiagram (same pattern as SqlEditor in TransformationBlocks.tsx)
 const mermaidImport = () => import('@/components/MermaidDiagram');
@@ -24,6 +25,59 @@ type MarkdownViewerProps = {
   content: string;
   className?: string;
 };
+
+// Component for rendering images from Keboola Storage Files (kbc-file:// protocol)
+function KbcFileImage({ src, alt }: { src: string; alt?: string }) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Parse kbc-file://{fileId}/{fileName}
+    const path = src.replace(KBC_FILE_PROTOCOL, '');
+    const fileId = parseInt(path.split('/')[0] ?? '', 10);
+    if (isNaN(fileId)) {
+      setError(true);
+      setLoading(false);
+      return;
+    }
+
+    // Lazy-load the API function to avoid circular imports
+    import('@/api/files')
+      .then(({ getFileDownloadUrl }) => getFileDownloadUrl(fileId))
+      .then((url) => {
+        setResolvedUrl(url);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
+  }, [src]);
+
+  if (loading) {
+    return (
+      <span className="inline-block h-20 w-32 animate-pulse rounded-md bg-neutral-100" />
+    );
+  }
+
+  if (error || !resolvedUrl) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-500">
+        Image not found
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={resolvedUrl}
+      alt={alt}
+      className="my-2 max-w-full rounded-md border border-neutral-200"
+      loading="lazy"
+    />
+  );
+}
 
 // Custom components for Tailwind styling using design tokens
 const markdownComponents = {
@@ -67,6 +121,21 @@ const markdownComponents = {
       {children}
     </blockquote>
   ),
+  // Images: detect kbc-file:// protocol for Storage Files, regular URL for external images
+  img: ({ src, alt, ...props }: React.ComponentProps<'img'>) => {
+    if (src?.startsWith(KBC_FILE_PROTOCOL)) {
+      return <KbcFileImage src={src} alt={alt} />;
+    }
+    return (
+      <img
+        src={src}
+        alt={alt}
+        className="my-2 max-w-full rounded-md border border-neutral-200"
+        loading="lazy"
+        {...props}
+      />
+    );
+  },
   hr: (props: React.ComponentProps<'hr'>) => (
     <hr className="my-4 border-neutral-200" {...props} />
   ),
