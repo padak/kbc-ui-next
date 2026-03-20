@@ -15,13 +15,17 @@ import { FlowEditor } from '@/components/FlowEditor';
 import { MappingEditor } from '@/components/MappingEditor';
 import { CodeEditor, extractCode } from '@/components/CodeEditor';
 import { TransformationBlocks, hasBlockStructure } from '@/components/TransformationBlocks';
+import { DescriptionDisplay } from '@/components/DescriptionDisplay';
+import { DescriptionEditor } from '@/components/DescriptionEditor';
 import { useConfiguration, useComponent } from '@/hooks/useComponents';
 import { useDeleteConfiguration } from '@/hooks/useComponents';
 import { useUpdateConfiguration, useUpdateConfigurationRow, useCopyConfiguration } from '@/hooks/useMutations';
 import { useComponentLookup } from '@/hooks/useComponentLookup';
 import { getComponentSchema } from '@/config/component-schemas';
 import { flowToMermaid, flowToText } from '@/lib/flowToMermaid';
+import type { ConfigContext } from '@/components/DescriptionModal';
 import { formatDate } from '@/lib/formatters';
+import { stripMarkdown } from '@/lib/stripMarkdown';
 import type { ConfigurationRow } from '@/api/schemas';
 
 // Inline editable text — click to edit, Enter/blur to save, Escape to cancel.
@@ -141,6 +145,7 @@ export function ConfigurationDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [copyName, setCopyName] = useState('');
+  const [editingDescription, setEditingDescription] = useState(false);
 
   const handleRename = useCallback((name: string) => {
     updateConfig.mutate({ name, changeDescription: 'Renamed via kbc-ui-next' });
@@ -203,12 +208,36 @@ export function ConfigurationDetailPage() {
           />
         }
         description={
-          <EditableText
-            value={config.description}
-            onSave={handleDescriptionChange}
-            placeholder="Add description..."
-            className="text-sm text-gray-500"
-          />
+          editingDescription ? (
+            <DescriptionEditor
+              value={config.description}
+              onSave={(desc) => {
+                handleDescriptionChange(desc);
+                setEditingDescription(false);
+              }}
+              onCancel={() => setEditingDescription(false)}
+              isSaving={updateConfig.isPending}
+            />
+          ) : (
+            <DescriptionDisplay
+              content={config.description}
+              title={config.name}
+              onEdit={() => setEditingDescription(true)}
+              configContext={{
+                componentId: componentId ?? '',
+                configId: configId ?? '',
+                configName: config.name,
+                componentName: component?.name,
+                description: config.description,
+                configuration: config.configuration,
+                rows: config.rows.map((r) => ({
+                  id: r.id,
+                  name: r.name,
+                  description: r.description,
+                })),
+              } satisfies ConfigContext}
+            />
+          )
         }
         actions={
           <div className="flex items-center gap-2">
@@ -385,7 +414,7 @@ export function ConfigurationDetailPage() {
                       </>
                     )}
                     {!hasSourceInfo && (
-                      <td className="px-4 py-2 text-sm text-gray-500">{row.description || '-'}</td>
+                      <td className="px-4 py-2 text-sm text-gray-500">{stripMarkdown(row.description) || '-'}</td>
                     )}
                     <td className="px-4 py-2">
                       <button

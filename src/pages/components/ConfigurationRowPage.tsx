@@ -4,9 +4,12 @@
 // Used by: App.tsx route /components/:componentId/:configId/rows/:rowId.
 // Data from: hooks/useComponents.ts (useConfiguration).
 
+import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { ConfigEditor } from '@/components/ConfigEditor';
+import { DescriptionDisplay } from '@/components/DescriptionDisplay';
+import { DescriptionEditor } from '@/components/DescriptionEditor';
 import { useConfiguration, useComponent } from '@/hooks/useComponents';
 import { useUpdateConfigurationRow } from '@/hooks/useMutations';
 
@@ -20,6 +23,15 @@ export function ConfigurationRowPage() {
   const { data: config, isLoading, error } = useConfiguration(componentId ?? '', configId ?? '');
   const { data: component } = useComponent(componentId ?? '');
   const updateRow = useUpdateConfigurationRow(componentId ?? '', configId ?? '');
+  const [editingDescription, setEditingDescription] = useState(false);
+
+  const handleDescriptionChange = useCallback((description: string) => {
+    updateRow.mutate({
+      rowId: rowId ?? '',
+      description,
+      changeDescription: 'Updated row description via kbc-ui-next',
+    });
+  }, [updateRow, rowId]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12 text-gray-400">Loading...</div>;
@@ -44,7 +56,25 @@ export function ConfigurationRowPage() {
     <div>
       <PageHeader
         title={row.name || row.id}
-        description={row.description || `Row ${row.id}`}
+        description={
+          editingDescription ? (
+            <DescriptionEditor
+              value={row.description}
+              onSave={(desc) => {
+                handleDescriptionChange(desc);
+                setEditingDescription(false);
+              }}
+              onCancel={() => setEditingDescription(false)}
+              isSaving={updateRow.isPending}
+            />
+          ) : (
+            <DescriptionDisplay
+              content={row.description || `Row ${row.id}`}
+              title={row.name || row.id}
+              onEdit={() => setEditingDescription(true)}
+            />
+          )
+        }
         actions={
           <button
             onClick={() => navigate(`/components/${encodeURIComponent(componentId ?? '')}/${configId}`)}

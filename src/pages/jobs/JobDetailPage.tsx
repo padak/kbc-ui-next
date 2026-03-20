@@ -4,7 +4,7 @@
 // Used by: App.tsx route /jobs/:jobId.
 // Data from: hooks/useJobs.ts, hooks/useEvents.ts.
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatDate } from '@/lib/formatters';
@@ -12,6 +12,7 @@ import { useJob } from '@/hooks/useJobs';
 import { useJobEvents } from '@/hooks/useEvents';
 import { EventsViewer } from '@/components/EventsViewer';
 import { calculateJobCredits, formatCredits, getContainerSize } from '@/config/credits';
+import { EVENTS_JUMP_TO_START_DELAY } from '@/config/events';
 
 // -- Layout persistence --
 
@@ -64,9 +65,34 @@ export function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const { data: job, isLoading, error } = useJob(jobId ?? '');
-  const { data: jobEvents, isLoading: eventsLoading, error: eventsError } = useJobEvents(job?.id, job?.runId);
+  const isLive = job?.status === 'processing';
+  const {
+    data: eventsData,
+    isLoading: eventsLoading,
+    error: eventsError,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useJobEvents(job?.id, job?.runId, { polling: isLive });
+  const jobEvents = useMemo(() => eventsData?.pages.flat() ?? [], [eventsData]);
   const [layout, setLayout] = useState<LayoutId>(getSavedLayout);
   const [voted, setVoted] = useState(false);
+  const [isJumpingToStart, setIsJumpingToStart] = useState(false);
+  const jumpAbortRef = useRef(false);
+
+  const handleJumpToStart = useCallback(async () => {
+    setIsJumpingToStart(true);
+    jumpAbortRef.current = false;
+    try {
+      let result = await fetchNextPage();
+      while (result.hasNextPage && !jumpAbortRef.current) {
+        await new Promise((r) => setTimeout(r, EVENTS_JUMP_TO_START_DELAY));
+        result = await fetchNextPage();
+      }
+    } finally {
+      setIsJumpingToStart(false);
+    }
+  }, [fetchNextPage]);
 
   function switchLayout(id: LayoutId) {
     setLayout(id);
@@ -86,13 +112,18 @@ export function JobDetailPage() {
   const result = job.result as Record<string, unknown> | null;
   const credits = formatCredits(calculateJobCredits(job.durationSeconds, getContainerSize((job as Record<string, unknown>).metrics), job.component));
   const backendSize = getContainerSize((job as Record<string, unknown>).metrics);
-  const isLive = job.status === 'processing';
   const eventsProps = {
-    events: jobEvents ?? [],
+    events: jobEvents,
     isLoading: eventsLoading,
     error: eventsError instanceof Error ? eventsError : null,
     title: `Events${isLive ? ' (live)' : ''}`,
     emptyMessage: 'No events for this job.',
+    hasNextPage: !!hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage: () => { fetchNextPage(); },
+    onJumpToStart: handleJumpToStart,
+    isJumpingToStart,
+    totalLoadedCount: jobEvents.length,
   };
 
   return (
@@ -173,6 +204,12 @@ type LayoutProps = {
     error: Error | null;
     title: string;
     emptyMessage: string;
+    hasNextPage?: boolean;
+    isFetchingNextPage?: boolean;
+    fetchNextPage?: () => void;
+    onJumpToStart?: () => void;
+    isJumpingToStart?: boolean;
+    totalLoadedCount?: number;
   };
 };
 
@@ -426,7 +463,7 @@ function LayoutDashboard({ job, result, credits, backendSize, eventsProps }: Lay
         <p className="text-xs text-gray-500">Credits</p>
       </div>
       <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-center">
-        <p className="text-3xl font-bold">{(eventsProps.events ?? []).length}</p>
+        <p className="text-3xl font-bold">{eventsProps.events.length}{eventsProps.hasNextPage ? '+' : ''}</p>
         <p className="text-xs text-gray-500">Events</p>
       </div>
       <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-center">
