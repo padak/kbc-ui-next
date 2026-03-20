@@ -14,8 +14,11 @@ type RawProject = { stack: string; token: string };
 export async function loadProjects(): Promise<ProjectEntry[]> {
   // 1. Try projects.secret.json
   const config = await loadProjectConfig();
-  if (config.organizations.length > 0) {
-    return config.organizations.flatMap((org) =>
+  const hasPersistedConfig =
+    config.organizations.length > 0 || (config.standaloneProjects ?? []).length > 0;
+
+  if (hasPersistedConfig) {
+    const orgEntries = config.organizations.flatMap((org) =>
       org.projects.map((p) => ({
         id: String(p.id),
         stackUrl: org.stack.replace(/\/+$/, ''),
@@ -27,6 +30,17 @@ export async function loadProjects(): Promise<ProjectEntry[]> {
         tokenDescription: '',
       })),
     );
+    const standaloneEntries = (config.standaloneProjects ?? []).map((p) => ({
+      id: String(p.id),
+      stackUrl: p.stack.replace(/\/+$/, ''),
+      token: p.token,
+      projectId: Number(p.id),
+      projectName: p.name,
+      organizationId: '',
+      organizationName: '',
+      tokenDescription: '',
+    }));
+    return [...orgEntries, ...standaloneEntries];
   }
 
   // 2. Fallback to env vars
