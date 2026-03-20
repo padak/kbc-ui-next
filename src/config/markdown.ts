@@ -8,6 +8,11 @@ export const DESCRIPTION_COLLAPSE_HEIGHT_PX = 120;
 
 export const MERMAID_RENDER_TIMEOUT_MS = 5_000;
 
+export const FILE_UPLOAD_MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+export const FILE_UPLOAD_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+export const FILE_UPLOAD_TAGS = ['documentation', 'kbc-ui-next'];
+export const KBC_FILE_PROTOCOL = 'kbc-file://'; // Custom protocol for file references in Markdown
+
 export type ToolbarItem = {
   label: string;
   icon: string;
