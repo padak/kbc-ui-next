@@ -179,6 +179,81 @@ Everything else from the legacy UI.
 - [ ] **Master token requirement** - tokens created via Management API (`POST /manage/projects/{id}/tokens`) are NOT master tokens. Storage events API only returns events created by the SAME token. Legacy UI uses SSO master token which sees ALL events. **Workaround**: user must connect with their master token (from project Settings -> API Tokens). **Proper fix**: either create master tokens via Management API (if supported), or add UI to let user paste their master token per project.
 - [ ] **Project switch navigation** - redirect from detail pages to listings when switching projects (partially implemented)
 
+**Job Phase Analysis** ([GitHub Issue #1](https://github.com/padak/kbc-ui-next/issues/1) — Petr Hunka):
+
+Decompose job execution into visible phases with timing. Every job goes through: preparation → input mapping → inner execution → output mapping → termination. Currently only total `durationSeconds` is shown — users can't tell where time is spent.
+
+*Data sources — what the APIs provide:*
+
+**Queue API job fields** (available on every job):
+- `createdTime` → `startTime` = queue wait + container startup (preparation phase)
+- `startTime` → `endTime` = total execution
+- `durationSeconds` = total wall time
+- `metrics.storage.inputTablesBytesSum` / `outputTablesBytesSum` = I/O data volumes (bytes, not timing)
+- `type`: `'standard'` | `'orchestrationContainer'` | `'phaseContainer'` | `'container'`
+
+**Queue API parent-child hierarchy** (for flows/orchestrations):
+- `parentRunId` filter on `/search/jobs` returns all child jobs of a flow
+- `orchestrationTaskId` links child job to a specific flow task
+- `job.configData.phaseId` identifies which orchestration phase a child belongs to
+- Three levels: orchestrationContainer → phaseContainer → standard jobs
+- Each child has its own `startTime`, `endTime`, `durationSeconds`
+
+**Storage Events** (for regular jobs — transformations, extractors, writers):
+- `storage.tableImportStarted` — timestamp + `params.columns`, `params.source.fileSize`
+- `storage.tableImportDone` — timestamp + `results.rowsCount`, `results.sizeBytes`, `performance.importDuration`
+- `storage.tableExportDone` — timestamp + `results.rowsCount`, `results.sizeBytes`, `performance.exportDuration`
+- Events queried via `GET /v2/storage/events?runId={jobId}`
+- **Limitation**: no structured "phase start/end" markers — must infer from event types and timestamps
+
+**OpenLineage** (Queue API `/jobs/{jobId}/openlineage`):
+- `START` event with `eventTime` + input datasets (tables loaded)
+- `COMPLETE` event with `eventTime` + output datasets (tables written)
+- Provides clean boundary between "Keboola I/O" and "inner execution"
+
+*Phase decomposition algorithm:*
+
+```
+preparation  = startTime - createdTime              (queue + container boot)
+input_mapping = first tableImportStarted → last tableImportDone  (or OpenLineage START)
+inner_exec    = after input mapping → before output mapping       (code/API execution)
+output_mapping = first tableExportDone event group               (or OpenLineage COMPLETE)
+termination   = last event → endTime                             (cleanup)
+```
+
+For jobs with no events (fast jobs, failed early): show only preparation + total execution.
+
+*Implementation — three job types:*
+
+**Regular jobs** (extractors, writers, transformations):
+- [ ] **Phase timeline component** — horizontal stacked bar showing 5 phases with durations. Color-coded: gray (prep), blue (input), green (exec), orange (output), gray (termination). Tooltip shows exact timestamps and bytes transferred.
+- [ ] **Event-based phase detection** — parse job events to identify phase boundaries. Group `storage.tableImport*` events as input phase, `storage.tableExport*` as output phase. Everything between = inner execution.
+- [ ] **I/O metrics summary** — show total input/output bytes, row counts, and per-table breakdown from events (already partially done in EventsViewer inline metrics).
+
+**Transformation jobs** (additionally):
+- [ ] **Block timing** — parse events for block execution markers. Show per-block duration in the phase/block tree. Requires message pattern matching (e.g., "Running block X" events).
+- [ ] **SQL statement timing** — if events contain per-statement metrics, show execution time per SQL statement in the editor.
+
+**Flow jobs** (orchestration containers):
+- [ ] **Child job timeline** — query child jobs via `parentRunId`, build Gantt-style timeline showing parallel phase execution. Each phase = horizontal lane, tasks = bars with start/end.
+- [ ] **Phase aggregation** — group child jobs by `configData.phaseId`, resolve phase names from orchestrator config. Show total phase duration = first child start → last child end.
+- [ ] **Task status grid** — compact grid: rows = phases, columns = tasks. Cell = status color + duration. Click → navigate to child job detail.
+- [ ] **Critical path** — highlight the longest sequential chain of phases (the bottleneck path through the DAG).
+
+*UI integration:*
+- [ ] **Phase bar on job detail** — always visible below job header. Compact single-line bar for quick scan.
+- [ ] **Expandable phase detail** — click a phase segment to see tables transferred, events, timing breakdown.
+- [ ] **Phase bar in job listings** — optional mini phase bar in the jobs table (like a sparkline) for at-a-glance comparison.
+- [ ] **Extend JobSchema** — add `metrics`, `type`, `orchestrationTaskId`, `configData` to Zod schema. Currently these fields are captured by `.passthrough()` but not typed.
+
+*Implementation sequence:*
+1. Extend JobSchema with missing fields (metrics, type, orchestrationTaskId, configData)
+2. Phase timeline component (horizontal stacked bar) with mock data
+3. Event-based phase detection for regular jobs
+4. Child job query + Gantt timeline for flow jobs
+5. Block timing for transformations
+6. Phase bar in job listings
+
 **Rich Description Editor** (Markdown + Mermaid):
 
 Configuration descriptions support Markdown in Keboola. Full Markdown authoring and rendering with Mermaid diagram support.
