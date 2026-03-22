@@ -63,8 +63,10 @@ describe('connection store', () => {
     expect(state.projectName).toBe('Test Project');
     expect(state.projects).toHaveLength(1);
     expect(state.activeProjectId).toBe('manual');
-    expect(localStorage.getItem('kbc_stack_url')).toBe('https://connection.keboola.com');
-    expect(localStorage.getItem('kbc_storage_token')).toBe('test-token');
+    // Security (H2): tokens stored only in kbc_projects, no redundant legacy keys
+    expect(localStorage.getItem('kbc_projects')).toBeTruthy();
+    expect(localStorage.getItem('kbc_stack_url')).toBeNull();
+    expect(localStorage.getItem('kbc_storage_token')).toBeNull();
   });
 
   it('disconnects and clears localStorage', () => {

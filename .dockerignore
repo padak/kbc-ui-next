@@ -1,0 +1,7 @@
+# Security: never deploy secret files to production containers
+projects.secret.json
+.env
+.env.local
+.env.*.local
+node_modules
+.git

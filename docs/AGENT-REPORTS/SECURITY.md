@@ -310,16 +310,16 @@ When a token is set via `VITE_STORAGE_TOKEN`, it is pre-filled in the visible pa
 
 | ID | Severity | Area | Status |
 |----|----------|------|--------|
-| H1 | HIGH | XSS via `javascript:` href in MarkdownViewer | Open |
-| H2 | HIGH | Storage API tokens in localStorage | Open (by design, needs documentation) |
-| M1 | MEDIUM | `projects.secret.json` served publicly — deployment risk | Open |
-| M2 | MEDIUM | `VITE_*` tokens baked into production bundle | Open (needs docs warning) |
-| M3 | MEDIUM | `/__save-projects` missing body schema validation | Open |
-| M4 | MEDIUM | Debug cURL logs with token info in browser console | Open |
-| M5 | MEDIUM | Token field included in event detail clipboard copy | Open |
-| L1 | LOW | No Content Security Policy | Open |
-| L2 | LOW | No X-Frame-Options / clickjacking protection | Open |
-| L3 | LOW | ErrorBoundary exposes raw validation errors to UI | Open |
+| H1 | HIGH | XSS via `javascript:` href in MarkdownViewer | **Fixed** (URL scheme allowlist) |
+| H2 | HIGH | Storage API tokens in localStorage | **Mitigated** (removed redundant legacy keys, documented trade-off) |
+| M1 | MEDIUM | `projects.secret.json` served publicly — deployment risk | **Fixed** (`.dockerignore` added, documented) |
+| M2 | MEDIUM | `VITE_*` tokens baked into production bundle | **Fixed** (runtime warning in production) |
+| M3 | MEDIUM | `/__save-projects` missing body schema validation | **Fixed** (Zod schema validation) |
+| M4 | MEDIUM | Debug cURL logs with token info in browser console | **Fixed** (DEV-only guard) |
+| M5 | MEDIUM | Token field included in event detail clipboard copy | **Fixed** (token masked to name-only) |
+| L1 | LOW | No Content Security Policy | **Fixed** (CSP meta tag in index.html) |
+| L2 | LOW | No X-Frame-Options / clickjacking protection | **Fixed** (frame-ancestors 'none' in CSP) |
+| L3 | LOW | ErrorBoundary exposes raw validation errors to UI | **Fixed** (generic message in production) |
 | L4 | LOW | Mermaid securityLevel: strict — informational | Acceptable |
 | L5 | LOW | VITE_STORAGE_TOKEN pre-fills token field | Acceptable for dev |
 
@@ -336,10 +336,8 @@ When a token is set via `VITE_STORAGE_TOKEN`, it is pre-filled in the visible pa
 
 ---
 
-## Next Steps
+## Remediation History
 
-1. Apply the one-line href sanitization fix in `MarkdownViewer.tsx`.
-2. Guard `console.error('[Keboola] Debug:', curl)` with `if (import.meta.env.DEV)`.
-3. Add CSP meta tag to `index.html`.
-4. Add Zod schema validation to the `/__save-projects` middleware body.
-5. Update deployment documentation to explicitly forbid deploying `projects.secret.json`.
+All fixes applied in PR: `feat/security-hardening` (2026-03-22).
+
+Security rules codified in `CLAUDE.md` to prevent regressions.

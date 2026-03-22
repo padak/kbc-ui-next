@@ -33,17 +33,19 @@ export class KeboolaValidationError extends Error {
       .map((i) => `  ${i.path.join('.')}: ${i.message} (got ${JSON.stringify((rawData as Record<string, unknown>)?.[String(i.path[0])])})`)
       .join('\n');
 
-    super(
-      `API response validation failed for ${endpoint}\n\n` +
-      `Fields with issues:\n${fieldErrors}\n\n` +
-      `Debug with:\n${curlCommand}\n`,
-    );
+    // In production, show only the endpoint — no cURL/token details in error message
+    const message = import.meta.env.DEV
+      ? `API response validation failed for ${endpoint}\n\nFields with issues:\n${fieldErrors}\n\nDebug with:\n${curlCommand}\n`
+      : `API response validation failed for ${endpoint}`;
+
+    super(message);
 
     this.name = 'KeboolaValidationError';
     this.endpoint = endpoint;
     this.zodErrors = zodErrors;
-    this.rawData = rawData;
-    this.curlCommand = curlCommand;
+    // In production, omit raw data and cURL command to prevent token/data leakage (M4)
+    this.rawData = import.meta.env.DEV ? rawData : undefined;
+    this.curlCommand = import.meta.env.DEV ? curlCommand : '';
   }
 }
 
@@ -131,8 +133,10 @@ export async function fetchApi<T>(
   const result = schema.safeParse(data);
   if (!result.success) {
     const curl = buildCurlCommand(url, token);
-    console.error('[Keboola] Validation failed for', path, result.error.issues);
-    console.error('[Keboola] Debug:', curl);
+    if (import.meta.env.DEV) {
+      console.error('[Keboola] Validation failed for', path, result.error.issues);
+      console.error('[Keboola] Debug:', curl);
+    }
     throw new KeboolaValidationError(path, result.error, data, curl);
   }
 
@@ -153,7 +157,9 @@ export async function fetchManageApi<T>(
   const result = schema.safeParse(data);
   if (!result.success) {
     const curl = buildCurlCommand(url, token);
-    console.error('[Keboola] Validation failed for', path, result.error.issues);
+    if (import.meta.env.DEV) {
+      console.error('[Keboola] Validation failed for', path, result.error.issues);
+    }
     throw new KeboolaValidationError(path, result.error, data, curl);
   }
 
@@ -175,7 +181,9 @@ export async function fetchQueueApi<T>(
   const result = schema.safeParse(data);
   if (!result.success) {
     const curl = buildCurlCommand(url, token);
-    console.error('[Keboola] Validation failed for', path, result.error.issues);
+    if (import.meta.env.DEV) {
+      console.error('[Keboola] Validation failed for', path, result.error.issues);
+    }
     throw new KeboolaValidationError(path, result.error, data, curl);
   }
 
@@ -199,7 +207,9 @@ export async function fetchApiForProject<T>(
   const result = schema.safeParse(data);
   if (!result.success) {
     const curl = buildCurlCommand(url, creds.token);
-    console.error('[Keboola] Validation failed for', path, result.error.issues);
+    if (import.meta.env.DEV) {
+      console.error('[Keboola] Validation failed for', path, result.error.issues);
+    }
     throw new KeboolaValidationError(path, result.error, data, curl);
   }
   return result.data;
@@ -219,7 +229,9 @@ export async function fetchQueueApiForProject<T>(
   const result = schema.safeParse(data);
   if (!result.success) {
     const curl = buildCurlCommand(url, creds.token);
-    console.error('[Keboola] Validation failed for', path, result.error.issues);
+    if (import.meta.env.DEV) {
+      console.error('[Keboola] Validation failed for', path, result.error.issues);
+    }
     throw new KeboolaValidationError(path, result.error, data, curl);
   }
   return result.data;
@@ -241,7 +253,9 @@ export async function fetchServiceApi<T>(
   const result = schema.safeParse(data);
   if (!result.success) {
     const curl = buildCurlCommand(url, token);
-    console.error('[Keboola] Validation failed for', path, result.error.issues);
+    if (import.meta.env.DEV) {
+      console.error('[Keboola] Validation failed for', path, result.error.issues);
+    }
     throw new KeboolaValidationError(path, result.error, data, curl);
   }
 

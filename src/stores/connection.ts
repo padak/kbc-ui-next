@@ -92,18 +92,15 @@ function deriveActiveFields(projects: ProjectEntry[], activeProjectId: string | 
   };
 }
 
+// Security note (H2): tokens are stored in plaintext localStorage. This is an accepted
+// trade-off for the local power-user tool use case. Do not add additional redundant
+// token storage keys — keep the attack surface minimal.
 function persistProjects(projects: ProjectEntry[], activeProjectId: string | null) {
   if (projects.length > 0) {
     localStorage.setItem(STORAGE_KEY.PROJECTS, JSON.stringify(projects));
     if (activeProjectId) {
       localStorage.setItem(STORAGE_KEY.ACTIVE_PROJECT_ID, activeProjectId);
     }
-  }
-  // Also persist stackUrl and token for legacy API client compatibility
-  const active = projects.find((p) => p.id === activeProjectId);
-  if (active) {
-    localStorage.setItem(STORAGE_KEY.STACK_URL, active.stackUrl);
-    localStorage.setItem(STORAGE_KEY.TOKEN, active.token);
   }
 }
 
