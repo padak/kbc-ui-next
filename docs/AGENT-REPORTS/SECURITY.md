@@ -329,15 +329,17 @@ When a token is set via `VITE_STORAGE_TOKEN`, it is pre-filled in the visible pa
 
 ## Recommendations
 
-1. **Immediately** fix H1 (javascript: href in MarkdownViewer) — one-line fix, high impact.
-2. **This sprint** — fix M4 (console token logging), M3 (save-projects body validation), and L3 (ErrorBoundary message leakage).
-3. **Before any public deployment** — resolve M1 (deployment docs for `projects.secret.json`), M2 (VITE_ token documentation), add CSP (L1), add X-Frame-Options (L2).
-4. **Ongoing** — evaluate whether localStorage token storage (H2) is acceptable given the target audience (local developer tool) and document the assumption explicitly.
+All recommendations have been addressed:
+
+1. ~~**Immediately** fix H1 (javascript: href in MarkdownViewer)~~ — **Done** (v0.6.0)
+2. ~~**This sprint** — fix M4, M3, L3~~ — **Done** (v0.6.0)
+3. ~~**Before any public deployment** — resolve M1, M2, L1, L2~~ — **Done** (v0.6.0)
+4. ~~**Ongoing** — evaluate localStorage token storage (H2)~~ — **Done** — accepted for local tool use case, documented in `CLAUDE.md` Security Rules
 
 ---
 
 ## Remediation History
 
-All fixes applied in PR: `feat/security-hardening` (2026-03-22).
-
-Security rules codified in `CLAUDE.md` to prevent regressions.
+- **2026-03-22** — All fixes applied in [PR #6](https://github.com/padak/kbc-ui-next/pull/6) (v0.6.0)
+- Security rules codified in `CLAUDE.md` to prevent regressions
+- 11 regression tests added in `src/security.test.tsx`
