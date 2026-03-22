@@ -161,6 +161,21 @@ The legacy kbc-ui at `/Users/padak/github/kbc-ui/` serves as a reference for:
 - Folders use metadata key `CONFIGURATION_FOLDER`
 - Storage API has NO OpenAPI spec - types are hand-written, always verify with curl
 
+## Security Rules
+
+These rules are **must-have** — violations are blockers in code review. Based on security audit (`docs/AGENT-REPORTS/SECURITY.md`).
+
+1. **Never pass unvalidated `href` to DOM** — all user-provided URLs (Markdown, links, `dangerouslySetInnerHTML`) must be validated against safe schemes (`https:`, `http:`, `mailto:`, `#`). Never allow `javascript:`, `data:`, or `vbscript:` URIs in rendered HTML.
+2. **Guard debug output with `import.meta.env.DEV`** — never log tokens (even masked), cURL commands, raw API responses, or Zod validation details to `console` in production builds. Vite tree-shakes DEV-guarded code from the bundle.
+3. **Never expose raw error messages in UI in production** — use generic user-facing messages; detailed errors belong in the browser console (DEV only) or structured logging.
+4. **Mask tokens in all user-facing output** — event details, clipboard copy, file downloads, error messages. For event tokens, include only `{ name }`, never the full token object.
+5. **`VITE_*` env vars are public** — Vite inlines `VITE_`-prefixed variables into the JS bundle at build time. Never use `VITE_` prefix for secrets in production builds. A runtime warning fires if detected in production.
+6. **`projects.secret.json` must never be deployed** — this file contains plaintext tokens. It is in `.gitignore` and `.dockerignore`. Never copy it to `dist/`.
+7. **CSP must be maintained** — `index.html` has a `Content-Security-Policy` meta tag. When adding external resources (scripts, styles, API domains, image sources), update the CSP directives. Current policy: `connect-src` allows `*.keboola.com` and `*.keboola.cloud`.
+8. **Validate all data written to disk** — dev-server middleware that writes files (e.g., `/__save-projects`) must validate input against a Zod schema before writing.
+9. **localStorage tokens are a known trade-off** — tokens are stored in plaintext `localStorage` for UX (persist across page reloads). Acceptable for the local power-user tool use case. Never add additional redundant token storage keys — keep the surface minimal.
+10. **No redundant secret storage** — store each secret in exactly one place. The `kbc_projects` localStorage key holds tokens; do not duplicate into separate keys like `kbc_storage_token`.
+
 ## Project Documentation
 
 - `docs/PLAN.md` - implementation plan with 7 phases

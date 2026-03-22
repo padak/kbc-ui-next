@@ -8,6 +8,28 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
+import { z } from 'zod';
+
+// Schema for validating projects.secret.json body before writing to disk (M3)
+// WARNING: projects.secret.json must NEVER be deployed to production — it contains plaintext tokens
+const ProjectConfigSchema = z.object({
+  organizations: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    stack: z.string(),
+    projects: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      token: z.string(),
+    })),
+  })),
+  standaloneProjects: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    stack: z.string(),
+    token: z.string(),
+  })).optional(),
+});
 
 function saveProjectsPlugin(): Plugin {
   return {
@@ -33,11 +55,18 @@ function saveProjectsPlugin(): Plugin {
         });
         req.on('end', async () => {
           try {
-            const data = JSON.parse(body);
+            const raw = JSON.parse(body);
+            // Validate against schema before writing to disk (M3)
+            const parsed = ProjectConfigSchema.safeParse(raw);
+            if (!parsed.success) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: 'Invalid project config', issues: parsed.error.issues }));
+              return;
+            }
             const { writeFile } = await import('fs/promises');
             await writeFile(
               resolve(__dirname, 'projects.secret.json'),
-              JSON.stringify(data, null, 2),
+              JSON.stringify(parsed.data, null, 2),
             );
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ ok: true }));

@@ -36,7 +36,8 @@ function eventToText(e: KeboolaEvent, includeDetails: boolean): string {
     if (Object.keys(e.params).length > 0) detail.params = e.params;
     if (Object.keys(e.results).length > 0) detail.results = e.results;
     if (e.performance && Object.keys(e.performance).length > 0) detail.performance = e.performance;
-    if (e.token) detail.token = e.token;
+    // Security: only include token name, never raw token data (M5)
+    if (e.token) detail.token = { name: e.token.name };
     if (e.context) detail.context = e.context;
     if (Object.keys(detail).length > 0) {
       text += '\n' + JSON.stringify(detail, null, 2).split('\n').map((l) => '    ' + l).join('\n');
@@ -164,7 +165,8 @@ function EventRow({ event, search }: { event: KeboolaEvent; search: string }) {
   if (Object.keys(event.params).length > 0) detail.params = event.params;
   if (Object.keys(event.results).length > 0) detail.results = event.results;
   if (event.performance && Object.keys(event.performance).length > 0) detail.performance = event.performance;
-  if (event.token) detail.token = event.token;
+  // Security: only include token name, never raw token data (M5)
+  if (event.token) detail.token = { name: event.token.name };
   if (event.context) detail.context = event.context;
 
   const detailJson = JSON.stringify(detail, null, 2);

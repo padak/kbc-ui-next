@@ -9,6 +9,14 @@ import { TokenVerifySchema } from '@/api/schemas';
 import { loadProjectConfig } from '@/lib/projectConfig';
 import type { ProjectEntry } from '@/stores/connection';
 
+// Security: warn if VITE_* tokens are embedded in a production bundle (M2)
+if (import.meta.env.PROD && (import.meta.env.VITE_STORAGE_TOKEN || import.meta.env.VITE_PROJECTS)) {
+  console.warn(
+    '[Security] VITE_STORAGE_TOKEN/VITE_PROJECTS are embedded in the production bundle. ' +
+    'These env vars should only be used in local development.',
+  );
+}
+
 type RawProject = { stack: string; token: string };
 
 export async function loadProjects(): Promise<ProjectEntry[]> {

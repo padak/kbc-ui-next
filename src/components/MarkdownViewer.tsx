@@ -93,17 +93,21 @@ const markdownComponents = {
   p: ({ children, ...props }: React.ComponentProps<'p'>) => (
     <p className="mb-2 text-sm leading-relaxed text-neutral-700" {...props}>{children}</p>
   ),
-  a: ({ children, href, ...props }: React.ComponentProps<'a'>) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-blue-600 underline hover:text-blue-700"
-      {...props}
-    >
-      {children}
-    </a>
-  ),
+  a: ({ children, href, ...props }: React.ComponentProps<'a'>) => {
+    // Security: only allow safe URL schemes to prevent XSS via javascript: URIs (H1)
+    const safeHref = href && /^(https?:\/\/|mailto:|#)/i.test(href) ? href : undefined;
+    return (
+      <a
+        href={safeHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 underline hover:text-blue-700"
+        {...props}
+      >
+        {children}
+      </a>
+    );
+  },
   ul: ({ children, ...props }: React.ComponentProps<'ul'>) => (
     <ul className="mb-2 ml-4 list-disc text-sm text-neutral-700" {...props}>{children}</ul>
   ),

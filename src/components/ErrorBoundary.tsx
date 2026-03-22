@@ -37,7 +37,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <div className="max-w-md rounded-lg border border-red-200 bg-red-50 p-6 text-center">
             <h2 className="mb-2 text-lg font-semibold text-red-800">Something went wrong</h2>
             <p className="mb-4 text-sm text-red-600">
-              {this.state.error?.message || 'An unexpected error occurred.'}
+              {import.meta.env.DEV
+                ? (this.state.error?.message || 'An unexpected error occurred.')
+                : 'An unexpected error occurred. Check the browser console for details.'}
             </p>
             <button
               onClick={() => this.setState({ hasError: false, error: null })}
