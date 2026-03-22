@@ -92,7 +92,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-500 hover:bg-gray-100"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {collapsed ? '\u2261' : '\u2190'}
+          {collapsed ? '\u2261' : '\u00AB'}
         </button>
         {!collapsed && (
           <div className="ml-2 min-w-0">

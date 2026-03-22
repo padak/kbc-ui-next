@@ -71,6 +71,9 @@ export function BucketDetailPage() {
   return (
     <div>
       <PageHeader
+        breadcrumbs={[
+          { label: 'Storage', href: '/storage' },
+        ]}
         title={title}
         description={
           bucket ? (
@@ -82,14 +85,6 @@ export function BucketDetailPage() {
               <span className="font-mono text-xs text-gray-400">{bucket.id}</span>
             </span>
           ) : undefined
-        }
-        actions={
-          <button
-            onClick={() => navigate('/storage')}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            Back to Storage
-          </button>
         }
       />
 
