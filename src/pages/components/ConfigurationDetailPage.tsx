@@ -201,7 +201,7 @@ export function ConfigurationDetailPage() {
     <div>
       <PageHeader
         breadcrumbs={[
-          { label: 'Components', href: '/components' },
+          { label: isTransformation ? 'Transformations' : isFlow ? 'Flows' : 'Components', href: isTransformation ? '/transformations' : isFlow ? '/flows' : '/components' },
           { label: component?.name ?? componentId ?? '', href: `/components/${encodeURIComponent(componentId ?? '')}` },
         ]}
         title={

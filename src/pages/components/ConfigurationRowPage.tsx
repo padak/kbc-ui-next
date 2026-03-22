@@ -42,6 +42,11 @@ export function ConfigurationRowPage() {
 
   const row = config?.rows.find((r) => r.id === rowId);
 
+  const isTransformation = component?.type === 'transformation';
+  const isFlow = componentId === 'keboola.orchestrator' || componentId === 'keboola.flow';
+  const parentLabel = isTransformation ? 'Transformations' : isFlow ? 'Flows' : 'Components';
+  const parentHref = isTransformation ? '/transformations' : isFlow ? '/flows' : '/components';
+
   if (!row) {
     return (
       <div>
@@ -55,7 +60,7 @@ export function ConfigurationRowPage() {
     <div>
       <PageHeader
         breadcrumbs={[
-          { label: 'Components', href: '/components' },
+          { label: parentLabel, href: parentHref },
           { label: component?.name ?? componentId ?? '', href: `/components/${encodeURIComponent(componentId ?? '')}` },
           { label: config?.name ?? configId ?? '', href: `/components/${encodeURIComponent(componentId ?? '')}/${configId}` },
         ]}

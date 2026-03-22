@@ -66,13 +66,18 @@ export function ConfigurationsPage() {
   const createConfig = useCreateConfiguration(componentId ?? '');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  const isTransformation = component?.type === 'transformation';
+  const isFlow = componentId === 'keboola.orchestrator' || componentId === 'keboola.flow';
+  const parentLabel = isTransformation ? 'Transformations' : isFlow ? 'Flows' : 'Components';
+  const parentHref = isTransformation ? '/transformations' : isFlow ? '/flows' : '/components';
+
   return (
     <div>
       <PageHeader
         title={component?.name ?? componentId ?? ''}
         description={`${configs?.length ?? 0} configurations`}
         breadcrumbs={[
-          { label: 'Components', href: '/components' },
+          { label: parentLabel, href: parentHref },
         ]}
         actions={
           <button
