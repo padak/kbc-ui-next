@@ -175,7 +175,7 @@ Everything else from the legacy UI.
 - [x] **Global events page** - `/events` route with 10s polling
 - [x] **4 job detail layouts** - Classic/Split/Terminal/Dashboard with vote button, localStorage persistence
 - [x] **Structured job result** - output/input tables with columns, JSON toggle
-- [ ] **Event pagination** - currently limited to 200 events. Need cursor-based "Load More" using `maxId` (UUID of oldest event). Also: "Jump to Start" button to load the earliest events of a job. Long jobs can have thousands of events.
+- [x] **Event pagination** - cursor-based "Load More" using `maxId`, "Load All" (Jump to Start) with delay between pages, seekbar for scroll position. Implemented via `useInfiniteQuery` in `useJobEvents()`.
 - [ ] **Master token requirement** - tokens created via Management API (`POST /manage/projects/{id}/tokens`) are NOT master tokens. Storage events API only returns events created by the SAME token. Legacy UI uses SSO master token which sees ALL events. **Workaround**: user must connect with their master token (from project Settings -> API Tokens). **Proper fix**: either create master tokens via Management API (if supported), or add UI to let user paste their master token per project.
 - [ ] **Project switch navigation** - redirect from detail pages to listings when switching projects (partially implemented)
 
@@ -273,8 +273,8 @@ Configuration descriptions support Markdown in Keboola. Full Markdown authoring 
 
 *UX improvements (TODO):*
 - [ ] **Editor opens in modal** - instead of inline replacement, open editor in a modal dialog (same size as reader modal) so it has proper width. Inline "Write" mode is too narrow.
-- [ ] **"Copy context for AI" button** - one click copies configuration context (config JSON, component info, job history summary, output tables) to clipboard. User pastes to Claude → gets back documentation draft. Motivates documentation by making it effortless.
-- [ ] **Documentation CTA** - when description is empty, show a prominent "Document this configuration" card with AI assist option, not just a subtle "Add description..." link
+- [x] **"Copy context for AI" button** - in DescriptionModal, copies config context to clipboard for documentation drafting with Claude/LLM.
+- [x] **Documentation CTA** - DescriptionDisplay shows prominent "Document this configuration" card when description is empty.
 - [ ] **Breadcrumb navigation** - `Components > Generic Extractor > Calendarific` at top of detail pages. Essential for orientation in deep hierarchies.
 - [ ] **Project + stack in URL** - e.g. `/p/336/components/...` so URL reveals which project/stack is active. Enables shareable links, bookmarks, and proper browser history across project switches.
 
