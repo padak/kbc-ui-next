@@ -275,7 +275,7 @@ Configuration descriptions support Markdown in Keboola. Full Markdown authoring 
 - [ ] **Editor opens in modal** - instead of inline replacement, open editor in a modal dialog (same size as reader modal) so it has proper width. Inline "Write" mode is too narrow.
 - [x] **"Copy context for AI" button** - in DescriptionModal, copies config context to clipboard for documentation drafting with Claude/LLM.
 - [x] **Documentation CTA** - DescriptionDisplay shows prominent "Document this configuration" card when description is empty.
-- [ ] **Breadcrumb navigation** - `Components > Generic Extractor > Calendarific` at top of detail pages. Essential for orientation in deep hierarchies.
+- [x] **Breadcrumb navigation** - `Components / Generic Extractor / Calendarific` at top of detail pages. Context-aware: shows Transformations/Flows/Components based on component type. Replaces standalone "Back" buttons.
 - [ ] **Project + stack in URL** - e.g. `/p/336/components/...` so URL reveals which project/stack is active. Enables shareable links, bookmarks, and proper browser history across project switches.
 
 **Transformation Explain & Lineage** (Fisa's tip):

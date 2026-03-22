@@ -5,7 +5,7 @@
 // Data from: hooks/useComponents.ts (useConfiguration).
 
 import { useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { ConfigEditor } from '@/components/ConfigEditor';
 import { DescriptionDisplay } from '@/components/DescriptionDisplay';
@@ -19,7 +19,6 @@ export function ConfigurationRowPage() {
     configId: string;
     rowId: string;
   }>();
-  const navigate = useNavigate();
   const { data: config, isLoading, error } = useConfiguration(componentId ?? '', configId ?? '');
   const { data: component } = useComponent(componentId ?? '');
   const updateRow = useUpdateConfigurationRow(componentId ?? '', configId ?? '');
@@ -43,6 +42,11 @@ export function ConfigurationRowPage() {
 
   const row = config?.rows.find((r) => r.id === rowId);
 
+  const isTransformation = component?.type === 'transformation';
+  const isFlow = componentId === 'keboola.orchestrator' || componentId === 'keboola.flow';
+  const parentLabel = isTransformation ? 'Transformations' : isFlow ? 'Flows' : 'Components';
+  const parentHref = isTransformation ? '/transformations' : isFlow ? '/flows' : '/components';
+
   if (!row) {
     return (
       <div>
@@ -55,6 +59,11 @@ export function ConfigurationRowPage() {
   return (
     <div>
       <PageHeader
+        breadcrumbs={[
+          { label: parentLabel, href: parentHref },
+          { label: component?.name ?? componentId ?? '', href: `/components/${encodeURIComponent(componentId ?? '')}` },
+          { label: config?.name ?? configId ?? '', href: `/components/${encodeURIComponent(componentId ?? '')}/${configId}` },
+        ]}
         title={row.name || row.id}
         description={
           editingDescription ? (
@@ -74,14 +83,6 @@ export function ConfigurationRowPage() {
               onEdit={() => setEditingDescription(true)}
             />
           )
-        }
-        actions={
-          <button
-            onClick={() => navigate(`/components/${encodeURIComponent(componentId ?? '')}/${configId}`)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            Back to Configuration
-          </button>
         }
       />
 

@@ -66,26 +66,26 @@ export function ConfigurationsPage() {
   const createConfig = useCreateConfiguration(componentId ?? '');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  const isTransformation = component?.type === 'transformation';
+  const isFlow = componentId === 'keboola.orchestrator' || componentId === 'keboola.flow';
+  const parentLabel = isTransformation ? 'Transformations' : isFlow ? 'Flows' : 'Components';
+  const parentHref = isTransformation ? '/transformations' : isFlow ? '/flows' : '/components';
+
   return (
     <div>
       <PageHeader
         title={component?.name ?? componentId ?? ''}
         description={`${configs?.length ?? 0} configurations`}
+        breadcrumbs={[
+          { label: parentLabel, href: parentHref },
+        ]}
         actions={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              + New Configuration
-            </button>
-            <button
-              onClick={() => navigate('/components')}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-            >
-              Back to Components
-            </button>
-          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            + New Configuration
+          </button>
         }
       />
 

@@ -5,7 +5,7 @@
 // Data from: hooks/useJobs.ts, hooks/useEvents.ts.
 
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router';
+import { useParams, Link } from 'react-router';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatDate } from '@/lib/formatters';
 import { useJob } from '@/hooks/useJobs';
@@ -63,7 +63,6 @@ function formatDuration(seconds: number | null): string {
 
 export function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
-  const navigate = useNavigate();
   const { data: job, isLoading, error } = useJob(jobId ?? '');
   const isLive = job?.status === 'processing';
   const {
@@ -128,6 +127,11 @@ export function JobDetailPage() {
 
   return (
     <div>
+      {/* Breadcrumb */}
+      <nav className="mb-2 flex items-center gap-1 text-sm text-gray-400">
+        <Link to="/jobs" className="hover:text-gray-700 transition-colors">Jobs</Link>
+      </nav>
+
       {/* Header — shared by all layouts */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -166,12 +170,6 @@ export function JobDetailPage() {
           </button>
         </div>
 
-        <button
-          onClick={() => navigate('/jobs')}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-        >
-          Back to Jobs
-        </button>
       </div>
 
       {/* Render selected layout */}

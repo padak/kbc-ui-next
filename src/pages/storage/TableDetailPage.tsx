@@ -5,7 +5,7 @@
 // Data from: hooks/useStorage.ts (useTable, useTablePreview).
 
 import { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams } from 'react-router';
 import { PageHeader } from '@/components/PageHeader';
 import { useTable, useTablePreview } from '@/hooks/useStorage';
 import { formatBytes, formatNumber, formatDate, formatRelativeTime } from '@/lib/formatters';
@@ -215,7 +215,7 @@ function ColumnsWithSamples({ columns, primaryKey, sampleData }: {
 
 export function TableDetailPage() {
   const { bucketId, tableId } = useParams<{ bucketId: string; tableId: string }>();
-  const navigate = useNavigate();
+
   const { data: table, isLoading, error } = useTable(tableId ?? '');
   const { data: previewData } = useTablePreview(tableId ?? '');
 
@@ -248,6 +248,10 @@ export function TableDetailPage() {
   return (
     <div>
       <PageHeader
+        breadcrumbs={[
+          { label: 'Storage', href: '/storage' },
+          { label: bucketId ?? '', href: `/storage/${encodeURIComponent(bucketId ?? '')}` },
+        ]}
         title={table.displayName || table.name}
         description={
           <span className="flex items-center gap-2">
@@ -255,14 +259,6 @@ export function TableDetailPage() {
             {table.isTyped && <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">TYPED</span>}
             {table.isAlias && <span className="rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-medium text-purple-600">ALIAS</span>}
           </span>
-        }
-        actions={
-          <button
-            onClick={() => navigate(`/storage/${encodeURIComponent(bucketId ?? '')}`)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            Back to Bucket
-          </button>
         }
       />
 

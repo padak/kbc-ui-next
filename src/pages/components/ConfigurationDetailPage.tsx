@@ -200,6 +200,10 @@ export function ConfigurationDetailPage() {
   return (
     <div>
       <PageHeader
+        breadcrumbs={[
+          { label: isTransformation ? 'Transformations' : isFlow ? 'Flows' : 'Components', href: isTransformation ? '/transformations' : isFlow ? '/flows' : '/components' },
+          { label: component?.name ?? componentId ?? '', href: `/components/${encodeURIComponent(componentId ?? '')}` },
+        ]}
         title={
           <EditableText
             value={config.name}
@@ -257,12 +261,6 @@ export function ConfigurationDetailPage() {
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
             >
               Copy
-            </button>
-            <button
-              onClick={() => navigate(`/components/${encodeURIComponent(componentId ?? '')}`)}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-            >
-              Back
             </button>
             <button
               onClick={() => setShowDeleteModal(true)}
