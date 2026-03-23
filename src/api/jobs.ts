@@ -8,14 +8,74 @@ import { z } from 'zod';
 import { fetchQueueApi, fetchQueueApiForProject, type ProjectCredentials } from './client';
 import { JobSchema, RunJobResponseSchema } from './schemas';
 
+// Full search params supported by Queue API /search/jobs
+export type JobSearchParams = {
+  limit?: number;
+  offset?: number;
+  // Multi-value filters
+  status?: string[];
+  componentId?: string[];
+  configId?: string[];
+  tokenDescription?: string[];
+  type?: string;
+  // Time range
+  createdTimeFrom?: string;
+  createdTimeTo?: string;
+  // Duration range
+  durationSecondsFrom?: number;
+  durationSecondsTo?: number;
+  // Sorting
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // ID search
+  id?: string[];
+  runId?: string[];
+};
+
+// Build URLSearchParams from JobSearchParams, handling array params correctly
+function buildSearchParams(params?: JobSearchParams): string {
+  if (!params) return '';
+
+  const sp = new URLSearchParams();
+
+  if (params.limit) sp.set('limit', String(params.limit));
+  if (params.offset) sp.set('offset', String(params.offset));
+
+  // Array params use param[]=val1&param[]=val2 format
+  if (params.status?.length) {
+    for (const v of params.status) sp.append('status[]', v);
+  }
+  if (params.componentId?.length) {
+    for (const v of params.componentId) sp.append('componentId[]', v);
+  }
+  if (params.configId?.length) {
+    for (const v of params.configId) sp.append('configId[]', v);
+  }
+  if (params.tokenDescription?.length) {
+    for (const v of params.tokenDescription) sp.append('tokenDescription[]', v);
+  }
+  if (params.id?.length) {
+    for (const v of params.id) sp.append('id[]', v);
+  }
+  if (params.runId?.length) {
+    for (const v of params.runId) sp.append('runId[]', v);
+  }
+
+  // Scalar params
+  if (params.type) sp.set('type', params.type);
+  if (params.createdTimeFrom) sp.set('createdTimeFrom', params.createdTimeFrom);
+  if (params.createdTimeTo) sp.set('createdTimeTo', params.createdTimeTo);
+  if (params.durationSecondsFrom != null) sp.set('durationSecondsFrom', String(params.durationSecondsFrom));
+  if (params.durationSecondsTo != null) sp.set('durationSecondsTo', String(params.durationSecondsTo));
+  if (params.sortBy) sp.set('sortBy', params.sortBy);
+  if (params.sortOrder) sp.set('sortOrder', params.sortOrder);
+
+  return sp.toString();
+}
+
 export const jobsApi = {
-  listJobs(params?: { limit?: number; offset?: number; status?: string; componentId?: string }) {
-    const searchParams = new URLSearchParams();
-    if (params?.limit) searchParams.set('limit', String(params.limit));
-    if (params?.offset) searchParams.set('offset', String(params.offset));
-    if (params?.status) searchParams.set('status', params.status);
-    if (params?.componentId) searchParams.set('component', params.componentId);
-    const query = searchParams.toString();
+  listJobs(params?: JobSearchParams) {
+    const query = buildSearchParams(params);
     return fetchQueueApi(`/search/jobs?${query}`, z.array(JobSchema));
   },
 

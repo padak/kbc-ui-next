@@ -1,22 +1,21 @@
 // file: hooks/useJobs.ts
 // TanStack Query hooks for Queue/Jobs API.
-// Lists jobs with filtering, shows job detail.
+// Lists jobs with full filtering/sorting, shows job detail.
 // Used by: pages/jobs/JobsPage.tsx, DashboardPage.tsx.
 // Auto-refetches running jobs every 5 seconds.
 
 import { useQuery } from '@tanstack/react-query';
-import { jobsApi } from '@/api/jobs';
+import { jobsApi, type JobSearchParams } from '@/api/jobs';
 import { useConnectionStore } from '@/stores/connection';
 
 const RUNNING_STATUSES = new Set(['created', 'waiting', 'processing', 'terminating']);
 
-export function useJobs(params?: { limit?: number; status?: string; componentId?: string }) {
+export function useJobs(params?: JobSearchParams) {
   const { isConnected, activeProjectId } = useConnectionStore();
-  const limit = params?.limit ?? 50;
 
   return useQuery({
-    queryKey: [activeProjectId, 'jobs', { limit, status: params?.status, componentId: params?.componentId }],
-    queryFn: () => jobsApi.listJobs({ limit, status: params?.status, componentId: params?.componentId }),
+    queryKey: [activeProjectId, 'jobs', params ?? {}],
+    queryFn: () => jobsApi.listJobs(params),
     enabled: isConnected,
     refetchInterval: 10_000,
   });
