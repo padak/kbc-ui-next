@@ -150,7 +150,7 @@ function maskSensitiveData(text: string): string {
 
 // -- Single event row --
 
-function EventRow({ event, search }: { event: KeboolaEvent; search: string }) {
+function EventRow({ event, search, onClick }: { event: KeboolaEvent; search: string; onClick?: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const style = TYPE_STYLES[event.type] ?? TYPE_STYLES.info!;
@@ -188,8 +188,12 @@ function EventRow({ event, search }: { event: KeboolaEvent; search: string }) {
         onClick={() => setExpanded(!expanded)}
         className="flex w-full items-start gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-50/80 transition-colors cursor-pointer"
       >
-        {/* Timestamp */}
-        <span className="shrink-0 font-mono text-gray-400 tabular-nums" title={event.created}>
+        {/* Timestamp — click to seek phase timeline */}
+        <span
+          className={`shrink-0 font-mono tabular-nums ${onClick ? 'text-blue-500 hover:text-blue-700' : 'text-gray-400'}`}
+          title={onClick ? 'Click to locate in phase timeline' : event.created}
+          onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}
+        >
           {formatTime(event.created)}
         </span>
 
@@ -344,6 +348,8 @@ type EventsViewerProps = {
   onJumpToStart?: () => void;
   isJumpingToStart?: boolean;
   totalLoadedCount?: number;
+  // Phase timeline integration — reports the timestamp of the currently visible event
+  onVisibleTimeChange?: (time: string | null) => void;
 };
 
 export function EventsViewer({
@@ -360,6 +366,7 @@ export function EventsViewer({
   onJumpToStart,
   isJumpingToStart,
   totalLoadedCount,
+  onVisibleTimeChange,
 }: EventsViewerProps) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
@@ -405,6 +412,15 @@ export function EventsViewer({
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Report visible event time to parent (for phase timeline indicator)
+  // Note: uses `events` (not `filtered`) to avoid dependency on filtered which is declared later.
+  // scrollFraction=0 means top (newest), 1=bottom (oldest)
+  useEffect(() => {
+    if (!onVisibleTimeChange || events.length === 0) return;
+    const idx = Math.min(Math.floor(scrollFraction * events.length), events.length - 1);
+    onVisibleTimeChange(events[idx]?.created ?? null);
+  }, [scrollFraction, events, onVisibleTimeChange]);
 
   const handleSeek = useCallback((fraction: number) => {
     const el = scrollContainerRef.current;
@@ -647,7 +663,12 @@ export function EventsViewer({
         )}
 
         {filtered.map((event) => (
-          <EventRow key={event.uuid ?? event.id ?? event.created} event={event} search={search} />
+          <EventRow
+            key={event.uuid ?? event.id ?? event.created}
+            event={event}
+            search={search}
+            onClick={onVisibleTimeChange ? () => onVisibleTimeChange(event.created) : undefined}
+          />
         ))}
 
         {/* Pagination footer */}

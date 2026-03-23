@@ -177,7 +177,7 @@ Everything else from the legacy UI.
 - [x] **Structured job result** - output/input tables with columns, JSON toggle
 - [x] **Event pagination** - cursor-based "Load More" using `maxId`, "Load All" (Jump to Start) with delay between pages, seekbar for scroll position. Implemented via `useInfiniteQuery` in `useJobEvents()`.
 - [ ] **Master token requirement** - tokens created via Management API (`POST /manage/projects/{id}/tokens`) are NOT master tokens. Storage events API only returns events created by the SAME token. Legacy UI uses SSO master token which sees ALL events. **Workaround**: user must connect with their master token (from project Settings -> API Tokens). **Proper fix**: either create master tokens via Management API (if supported), or add UI to let user paste their master token per project.
-- [ ] **Project switch navigation** - redirect from detail pages to listings when switching projects (partially implemented)
+- [x] **Project switch navigation** - redirect from detail pages to listings when switching projects. Uses `SAFE_LISTING_ROUTES` set for future-proof detection, info toast on redirect, project name in breadcrumbs.
 
 **Job Phase Analysis** ([GitHub Issue #1](https://github.com/padak/kbc-ui-next/issues/1) — Petr Hunka):
 
@@ -226,9 +226,9 @@ For jobs with no events (fast jobs, failed early): show only preparation + total
 *Implementation — three job types:*
 
 **Regular jobs** (extractors, writers, transformations):
-- [ ] **Phase timeline component** — horizontal stacked bar showing 5 phases with durations. Color-coded: gray (prep), blue (input), green (exec), orange (output), gray (termination). Tooltip shows exact timestamps and bytes transferred.
-- [ ] **Event-based phase detection** — parse job events to identify phase boundaries. Group `storage.tableImport*` events as input phase, `storage.tableExport*` as output phase. Everything between = inner execution.
-- [ ] **I/O metrics summary** — show total input/output bytes, row counts, and per-table breakdown from events (already partially done in EventsViewer inline metrics).
+- [x] **Phase timeline component** — horizontal stacked bar showing 5 phases with durations. Color-coded: gray (prep), blue (input), green (exec), orange (output), gray (termination). Tooltip shows exact timestamps and bytes transferred. Event position marker synced with EventsViewer scroll/click.
+- [x] **Event-based phase detection** — `detectJobPhases()` in `src/lib/jobPhases.ts`. Extractor path (no workspace) and transformation path (workspace + clone + SQL). Boundaries from `storage.workspaceCreated/TableCloned/tableImportStarted/Done` events. 12 tests.
+- [x] **I/O metrics summary** — total tables, rows, bytes from `tableImportDone` events shown below phase bar.
 
 **Transformation jobs** (additionally):
 - [ ] **Block timing** — parse events for block execution markers. Show per-block duration in the phase/block tree. Requires message pattern matching (e.g., "Running block X" events).
@@ -241,7 +241,7 @@ For jobs with no events (fast jobs, failed early): show only preparation + total
 - [ ] **Critical path** — highlight the longest sequential chain of phases (the bottleneck path through the DAG).
 
 *UI integration:*
-- [ ] **Phase bar on job detail** — always visible below job header. Compact single-line bar for quick scan.
+- [x] **Phase bar on job detail** — rendered above EventsViewer in all 4 layouts. Red position marker syncs with event scroll/click.
 - [ ] **Expandable phase detail** — click a phase segment to see tables transferred, events, timing breakdown.
 - [ ] **Phase bar in job listings** — optional mini phase bar in the jobs table (like a sparkline) for at-a-glance comparison.
 - [ ] **Extend JobSchema** — add `metrics`, `type`, `orchestrationTaskId`, `configData` to Zod schema. Currently these fields are captured by `.passthrough()` but not typed.

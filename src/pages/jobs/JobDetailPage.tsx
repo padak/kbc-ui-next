@@ -11,8 +11,11 @@ import { formatDate } from '@/lib/formatters';
 import { useJob } from '@/hooks/useJobs';
 import { useJobEvents } from '@/hooks/useEvents';
 import { EventsViewer } from '@/components/EventsViewer';
+import { PhaseTimeline } from '@/components/PhaseTimeline';
+import { TransformationAnalyzer } from '@/components/TransformationAnalyzer';
 import { calculateJobCredits, formatCredits, getContainerSize } from '@/config/credits';
 import { EVENTS_JUMP_TO_START_DELAY } from '@/config/events';
+import { COMPLETED_JOB_STATUSES } from '@/config/phases';
 import { useConnectionStore } from '@/stores/connection';
 
 // -- Layout persistence --
@@ -101,6 +104,9 @@ export function JobDetailPage() {
     saveLayout(id);
   }
 
+  // Track the timestamp of the currently visible event in EventsViewer (for phase timeline marker)
+  const [visibleEventTime, setVisibleEventTime] = useState<string | null>(null);
+
   function handleVote() {
     castVote(layout);
     setVoted(true);
@@ -125,6 +131,7 @@ export function JobDetailPage() {
     fetchNextPage: () => { fetchNextPage(); },
     onJumpToStart: handleJumpToStart,
     isJumpingToStart,
+    onVisibleTimeChange: setVisibleEventTime,
     totalLoadedCount: jobEvents.length,
   };
 
@@ -182,18 +189,24 @@ export function JobDetailPage() {
       </div>
 
       {/* Render selected layout */}
-      {layout === 'classic' && (
-        <LayoutClassic job={job} result={result} credits={credits} backendSize={backendSize} eventsProps={eventsProps} />
-      )}
-      {layout === 'split' && (
-        <LayoutSplit job={job} result={result} credits={credits} backendSize={backendSize} eventsProps={eventsProps} />
-      )}
-      {layout === 'terminal' && (
-        <LayoutTerminal job={job} result={result} credits={credits} backendSize={backendSize} eventsProps={eventsProps} />
-      )}
-      {layout === 'dashboard' && (
-        <LayoutDashboard job={job} result={result} credits={credits} backendSize={backendSize} eventsProps={eventsProps} />
-      )}
+      {(() => {
+        const isCompleted = COMPLETED_JOB_STATUSES.has(job.status);
+        const isTransformation = isCompleted && job.component.includes('transformation');
+        const phaseBar = isCompleted
+          ? isTransformation
+            ? <TransformationAnalyzer job={job} events={jobEvents} currentTime={visibleEventTime} />
+            : <PhaseTimeline job={job} events={jobEvents} currentTime={visibleEventTime} />
+          : undefined;
+        const props = { job, result, credits, backendSize, eventsProps, phaseBar };
+        return (
+          <>
+            {layout === 'classic' && <LayoutClassic {...props} />}
+            {layout === 'split' && <LayoutSplit {...props} />}
+            {layout === 'terminal' && <LayoutTerminal {...props} />}
+            {layout === 'dashboard' && <LayoutDashboard {...props} />}
+          </>
+        );
+      })()}
     </div>
   );
 }
@@ -205,6 +218,7 @@ type LayoutProps = {
   result: Record<string, unknown> | null;
   credits: string;
   backendSize: string;
+  phaseBar?: React.ReactNode;
   eventsProps: {
     events: import('@/api/events').KeboolaEvent[];
     isLoading: boolean;
@@ -217,6 +231,7 @@ type LayoutProps = {
     onJumpToStart?: () => void;
     isJumpingToStart?: boolean;
     totalLoadedCount?: number;
+    onVisibleTimeChange?: (time: string | null) => void;
   };
 };
 
@@ -336,7 +351,7 @@ function TableRow({ table, stage }: { table: Record<string, unknown>; stage: 'in
 // Layout A: Classic — cards + stacked sections (original layout)
 // ==========================================================================
 
-function LayoutClassic({ job, result, credits, eventsProps }: LayoutProps) {
+function LayoutClassic({ job, result, credits, eventsProps, phaseBar }: LayoutProps) {
   return (
     <>
       {/* Stats cards */}
@@ -382,7 +397,8 @@ function LayoutClassic({ job, result, credits, eventsProps }: LayoutProps) {
         <ResultPanel result={result} maxHeight="300px" />
       </div>
 
-      {/* Events */}
+      {/* Phase timeline + Events */}
+      {phaseBar}
       <EventsViewer {...eventsProps} maxHeight="400px" />
     </>
   );
@@ -392,12 +408,13 @@ function LayoutClassic({ job, result, credits, eventsProps }: LayoutProps) {
 // Layout B: Split — events left 2/3, result right 1/3
 // ==========================================================================
 
-function LayoutSplit({ job, result, credits, backendSize, eventsProps }: LayoutProps) {
+function LayoutSplit({ job, result, credits, backendSize, eventsProps, phaseBar }: LayoutProps) {
   return (
     <>
       <div className="mb-4">
         <InfoBar job={job} credits={credits} backendSize={backendSize} />
       </div>
+      {phaseBar}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <EventsViewer {...eventsProps} maxHeight="calc(100vh - 240px)" />
@@ -414,7 +431,7 @@ function LayoutSplit({ job, result, credits, backendSize, eventsProps }: LayoutP
 // Layout C: Terminal — events-first, minimal chrome, full width
 // ==========================================================================
 
-function LayoutTerminal({ job, result, credits, backendSize, eventsProps }: LayoutProps) {
+function LayoutTerminal({ job, result, credits, backendSize, eventsProps, phaseBar }: LayoutProps) {
   const outputTables = ((result?.output as Record<string, unknown>)?.tables as Array<Record<string, unknown>>) ?? [];
   const message = result?.message as string | undefined;
 
@@ -447,7 +464,8 @@ function LayoutTerminal({ job, result, credits, backendSize, eventsProps }: Layo
         )}
       </div>
 
-      {/* Events — full width, maximum height */}
+      {/* Phase timeline + Events — full width, maximum height */}
+      {phaseBar}
       <EventsViewer {...eventsProps} maxHeight="calc(100vh - 180px)" />
     </>
   );
@@ -457,7 +475,7 @@ function LayoutTerminal({ job, result, credits, backendSize, eventsProps }: Layo
 // Layout D: Dashboard — grid cards with everything visible
 // ==========================================================================
 
-function LayoutDashboard({ job, result, credits, backendSize, eventsProps }: LayoutProps) {
+function LayoutDashboard({ job, result, credits, backendSize, eventsProps, phaseBar }: LayoutProps) {
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
       {/* Row 1: 4 stat cards */}
@@ -493,8 +511,9 @@ function LayoutDashboard({ job, result, credits, backendSize, eventsProps }: Lay
         <ResultPanel result={result} maxHeight="200px" />
       </div>
 
-      {/* Row 3: Events full width */}
+      {/* Row 3: Phase timeline + Events full width */}
       <div className="lg:col-span-4">
+        {phaseBar}
         <EventsViewer {...eventsProps} maxHeight="400px" />
       </div>
     </div>
