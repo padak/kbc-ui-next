@@ -343,6 +343,12 @@
   outline: none;
 }
 
+/* Textarea editors: suppress green outline, use subtle inner shadow instead */
+[data-theme="keboola"] textarea:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--color-neutral-300);
+}
+
 /* ── Scrollbar ────────────────────────────────────────────────────────── */
 
 [data-theme="keboola"] ::-webkit-scrollbar {

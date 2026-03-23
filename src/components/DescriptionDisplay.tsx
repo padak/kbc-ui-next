@@ -4,7 +4,7 @@
 // Used by: ConfigurationDetailPage, ConfigurationRowPage via PageHeader.
 // Empty state shows prominent "Document this configuration" CTA.
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { MarkdownViewer } from '@/components/MarkdownViewer';
 import { DescriptionModal, type ConfigContext } from '@/components/DescriptionModal';
 import { DESCRIPTION_COLLAPSE_HEIGHT_PX } from '@/config/markdown';
@@ -26,7 +26,15 @@ export function DescriptionDisplay({
 }: DescriptionDisplayProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
+  const [copied, setCopied] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const handleCopyMarkdown = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [content]);
 
   useEffect(() => {
     if (!contentRef.current) return;
@@ -74,6 +82,15 @@ export function DescriptionDisplay({
             Documentation
           </div>
           <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={handleCopyMarkdown}
+              className="rounded px-1.5 py-0.5 text-xs text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+              title="Copy Markdown to clipboard"
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+            <span className="text-xs text-neutral-300">|</span>
             <button
               type="button"
               onClick={(e) => {

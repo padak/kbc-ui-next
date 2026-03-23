@@ -63,7 +63,9 @@ export async function prepareFileUpload(
 }
 
 export async function getFileDetail(fileId: number): Promise<FileDetail> {
-  return fetchApi(`/files/${fileId}`, fileDetailSchema);
+  // federationToken=1 ensures the response includes a signed download URL
+  // that works in the browser without additional auth headers
+  return fetchApi(`/files/${fileId}?federationToken=1`, fileDetailSchema);
 }
 
 // -- Upload to cloud storage (provider-specific) --

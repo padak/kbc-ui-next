@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Outlet, Navigate, useNavigate, useLocation } from 'react-router';
 import { useConnectionStore } from '@/stores/connection';
+import { useToastStore } from '@/stores/toast';
 import { Sidebar } from './Sidebar';
 import { CommandPalette } from './CommandPalette';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -44,8 +45,20 @@ export function AppLayout() {
 }
 
 // Inner component rendered after auth guard - safe to call hooks here
-// Routes with IDs that are project-specific — navigating away on project switch
-const PROJECT_SPECIFIC_ROUTES = ['/jobs/', '/storage/', '/components/'];
+
+// Listing routes that are safe to stay on when switching projects (no project-specific IDs in URL).
+// Everything else with a deeper path (e.g. /jobs/123, /storage/in.c-bucket) is a detail page
+// and needs redirect to its parent listing.
+const SAFE_LISTING_ROUTES = new Set([
+  '/dashboard',
+  '/storage',
+  '/components',
+  '/flows',
+  '/transformations',
+  '/jobs',
+  '/jobs/all',
+  '/settings',
+]);
 
 function AppLayoutInner({
   sidebarCollapsed,
@@ -55,7 +68,7 @@ function AppLayoutInner({
   onToggleSidebar: () => void;
 }) {
   useMetadataPreload();
-  const { activeProjectId } = useConnectionStore();
+  const { activeProjectId, projectName } = useConnectionStore();
   const navigate = useNavigate();
   const location = useLocation();
   const prevProjectId = useRef(activeProjectId);
@@ -63,17 +76,20 @@ function AppLayoutInner({
   // When active project changes, redirect away from project-specific detail pages
   useEffect(() => {
     if (prevProjectId.current && prevProjectId.current !== activeProjectId) {
-      const isOnDetailPage = PROJECT_SPECIFIC_ROUTES.some(
-        (prefix) => location.pathname.startsWith(prefix) && location.pathname !== prefix.slice(0, -1),
-      );
-      if (isOnDetailPage) {
+      const pathname = location.pathname;
+      const isOnSafePage = SAFE_LISTING_ROUTES.has(pathname);
+      if (!isOnSafePage && pathname !== '/') {
         // Navigate to the parent listing page (e.g. /jobs/123 -> /jobs)
-        const parentPath = '/' + location.pathname.split('/')[1];
+        const parentPath = '/' + pathname.split('/')[1];
         navigate(parentPath, { replace: true });
+        useToastStore.getState().addToast(
+          'info',
+          `Switched to ${projectName || 'new project'} — redirected to listing`,
+        );
       }
     }
     prevProjectId.current = activeProjectId;
-  }, [activeProjectId, location.pathname, navigate]);
+  }, [activeProjectId, location.pathname, navigate, projectName]);
 
   return (
     <div className="flex h-screen">

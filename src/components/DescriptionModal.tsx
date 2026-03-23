@@ -77,7 +77,13 @@ type DescriptionModalProps = {
 
 export function DescriptionModal({ content, title, isOpen, onClose, onEdit, configContext }: DescriptionModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'context' | 'markdown' | false>(false);
+
+  const handleCopyMarkdown = useCallback(() => {
+    navigator.clipboard.writeText(content);
+    setCopied('markdown');
+    setTimeout(() => setCopied(false), 2000);
+  }, [content]);
 
   // Escape to close
   const handleKeyDown = useCallback(
@@ -108,7 +114,7 @@ export function DescriptionModal({ content, title, isOpen, onClose, onEdit, conf
     if (!configContext) return;
     const text = buildContextText(configContext);
     navigator.clipboard.writeText(text);
-    setCopied(true);
+    setCopied('context');
     setTimeout(() => setCopied(false), 2000);
   }, [configContext]);
 
@@ -132,17 +138,29 @@ export function DescriptionModal({ content, title, isOpen, onClose, onEdit, conf
               <p className="mt-0.5 text-xs text-neutral-400">Configuration documentation</p>
             </div>
             <div className="ml-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopyMarkdown}
+                className="flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+                title="Copy Markdown to clipboard"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                  <rect x="5" y="2" width="9" height="11" rx="1.5" />
+                  <path d="M2 5v8.5A1.5 1.5 0 003.5 15H10" />
+                </svg>
+                {copied === 'markdown' ? 'Copied!' : 'Copy'}
+              </button>
               {configContext && (
                 <button
                   type="button"
                   onClick={handleCopyContext}
                   className="flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700"
-                  title="Copy configuration context to clipboard for AI documentation"
+                  title="Copy config + JSON context to clipboard — paste into ChatGPT/Claude to draft documentation"
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0">
                     <path d="M8 1.5l2.5 2.5M4 9l4.5-4.5M2 14h3.5l7-7-3.5-3.5-7 7V14z" />
                   </svg>
-                  {copied ? 'Copied!' : 'Copy context for AI'}
+                  {copied === 'context' ? 'Copied!' : 'Draft with AI'}
                 </button>
               )}
               <button

@@ -238,6 +238,31 @@ export function DescriptionEditor({ value, onSave, onCancel, isSaving }: Descrip
         )}
       </div>
 
+      {/* Action bar (top) — hints + Cancel/Save */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-150 px-3 py-2">
+        <span className="text-xs text-neutral-400">
+          Markdown supported. Paste images with Ctrl+V. Cmd+Enter to save, Escape to cancel.
+        </span>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSaving}
+            className="rounded-md border border-neutral-200 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(draft)}
+            disabled={isSaving || uploading}
+            className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:bg-neutral-300"
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+
       {/* Upload status */}
       {uploading && (
         <div className="border-b border-neutral-100 bg-blue-50 px-3 py-1.5 text-xs text-blue-600">
@@ -290,12 +315,12 @@ export function DescriptionEditor({ value, onSave, onCancel, isSaving }: Descrip
         )}
       </div>
 
-      {/* Footer: Cancel + Save */}
-      <div className="flex items-center justify-between border-t border-neutral-150 px-3 py-2">
+      {/* Action bar (bottom) — same as top for long content */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-150 px-3 py-2">
         <span className="text-xs text-neutral-400">
           Markdown supported. Paste images with Ctrl+V. Cmd+Enter to save, Escape to cancel.
         </span>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-2">
           <button
             type="button"
             onClick={onCancel}

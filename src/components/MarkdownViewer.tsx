@@ -31,6 +31,7 @@ function KbcFileImage({ src, alt }: { src: string; alt?: string }) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [imgLoadError, setImgLoadError] = useState(false);
 
   useEffect(() => {
     // Parse kbc-file://{fileId}/{fileName}
@@ -61,10 +62,10 @@ function KbcFileImage({ src, alt }: { src: string; alt?: string }) {
     );
   }
 
-  if (error || !resolvedUrl) {
+  if (error || !resolvedUrl || imgLoadError) {
     return (
       <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-500">
-        Image not found
+        Image not found{alt ? `: ${alt}` : ''}
       </span>
     );
   }
@@ -75,6 +76,7 @@ function KbcFileImage({ src, alt }: { src: string; alt?: string }) {
       alt={alt}
       className="my-2 max-w-full rounded-md border border-neutral-200"
       loading="lazy"
+      onError={() => setImgLoadError(true)}
     />
   );
 }

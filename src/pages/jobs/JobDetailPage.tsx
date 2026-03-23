@@ -13,6 +13,7 @@ import { useJobEvents } from '@/hooks/useEvents';
 import { EventsViewer } from '@/components/EventsViewer';
 import { calculateJobCredits, formatCredits, getContainerSize } from '@/config/credits';
 import { EVENTS_JUMP_TO_START_DELAY } from '@/config/events';
+import { useConnectionStore } from '@/stores/connection';
 
 // -- Layout persistence --
 
@@ -62,6 +63,8 @@ function formatDuration(seconds: number | null): string {
 // -- Main page --
 
 export function JobDetailPage() {
+  const { projects, projectName } = useConnectionStore();
+  const isMultiProject = projects.length > 1;
   const { jobId } = useParams<{ jobId: string }>();
   const { data: job, isLoading, error } = useJob(jobId ?? '');
   const isLive = job?.status === 'processing';
@@ -129,6 +132,12 @@ export function JobDetailPage() {
     <div>
       {/* Breadcrumb */}
       <nav className="mb-2 flex items-center gap-1 text-sm text-gray-400">
+        {isMultiProject && projectName && (
+          <>
+            <span className="truncate max-w-48 text-blue-500 font-medium">{projectName}</span>
+            <span className="text-gray-300">/</span>
+          </>
+        )}
         <Link to="/jobs" className="hover:text-gray-700 transition-colors">Jobs</Link>
       </nav>
 

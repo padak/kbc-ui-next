@@ -1,11 +1,12 @@
 // file: components/PageHeader.tsx
 // Reusable page header with breadcrumb navigation, title, and actions.
-// Breadcrumbs show the navigation hierarchy (e.g., Components > Extractor > Config).
+// Breadcrumbs show the navigation hierarchy (e.g., [Project] > Components > Extractor > Config).
 // Used by: every page component as the top section.
-// Actions slot accepts buttons or other interactive elements.
+// In multi-project mode, automatically prepends project name as first breadcrumb.
 
 import { Link } from 'react-router';
 import type { ReactNode } from 'react';
+import { useConnectionStore } from '@/stores/connection';
 
 export type BreadcrumbItem = {
   label: string;
@@ -20,20 +21,41 @@ type PageHeaderProps = {
 };
 
 export function PageHeader({ title, description, actions, breadcrumbs }: PageHeaderProps) {
+  const { projects, projectName } = useConnectionStore();
+  const isMultiProject = projects.length > 1;
+
+  // In multi-project mode, prepend the active project name as the first breadcrumb
+  const allCrumbs: BreadcrumbItem[] = [];
+  if (isMultiProject && projectName && breadcrumbs && breadcrumbs.length > 0) {
+    allCrumbs.push({ label: projectName, href: '/dashboard' });
+  }
+  if (breadcrumbs) {
+    allCrumbs.push(...breadcrumbs);
+  }
+
   return (
     <div className="mb-6">
-      {breadcrumbs && breadcrumbs.length > 0 && (
+      {allCrumbs.length > 0 && (
         <nav className="mb-2 flex items-center gap-1 text-sm text-gray-400">
-          {breadcrumbs.map((crumb, i) => (
-            <span key={crumb.href} className="flex items-center gap-1">
+          {allCrumbs.map((crumb, i) => (
+            <span key={`${i}-${crumb.href}`} className="flex items-center gap-1">
               {i > 0 && <span className="text-gray-300">/</span>}
-              <Link
-                to={crumb.href}
-                className="hover:text-gray-700 transition-colors truncate max-w-48"
-                title={crumb.label}
-              >
-                {crumb.label}
-              </Link>
+              {i === 0 && isMultiProject && breadcrumbs && breadcrumbs.length > 0 ? (
+                <span
+                  className="truncate max-w-48 text-blue-500 font-medium"
+                  title={crumb.label}
+                >
+                  {crumb.label}
+                </span>
+              ) : (
+                <Link
+                  to={crumb.href}
+                  className="hover:text-gray-700 transition-colors truncate max-w-48"
+                  title={crumb.label}
+                >
+                  {crumb.label}
+                </Link>
+              )}
             </span>
           ))}
         </nav>
