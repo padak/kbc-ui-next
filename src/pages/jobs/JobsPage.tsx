@@ -11,7 +11,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { FilterDropdown, type FilterOption } from '@/components/FilterDropdown';
 import { useJobs } from '@/hooks/useJobs';
 import { useComponentLookup } from '@/hooks/useComponentLookup';
-import { useComponents } from '@/hooks/useComponents';
+import { useComponents, useConfigurations } from '@/hooks/useComponents';
 import { useConnectionStore } from '@/stores/connection';
 import { formatRelativeTime } from '@/lib/formatters';
 import { ROUTES } from '@/lib/constants';
@@ -264,6 +264,14 @@ export function JobsPage() {
       .map((desc) => ({ value: desc, label: desc }));
   }, [jobs]);
 
+  // Configuration options (depends on selected component — fetch configs for the first selected component)
+  const singleComponentId = selectedComponents.length === 1 ? selectedComponents[0] : '';
+  const { data: configs } = useConfigurations(singleComponentId ?? '');
+  const configOptions = useMemo((): FilterOption[] => {
+    if (!configs) return [];
+    return configs.map((c) => ({ value: c.id, label: c.name || c.id }));
+  }, [configs]);
+
   // Job type options
   const typeOptions = useMemo((): FilterOption[] => {
     return JOB_TYPE_OPTIONS.map((t) => ({ value: t.value, label: t.label }));
@@ -442,7 +450,7 @@ export function JobsPage() {
       />
 
       {/* Status pills */}
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         {JOB_STATUS_OPTIONS.map((s) => {
           const isActive = selectedStatuses.includes(s.value);
           const pillColors = STATUS_PILL_COLORS[s.value];
@@ -461,6 +469,18 @@ export function JobsPage() {
             </button>
           );
         })}
+        {selectedStatuses.length > 0 && (
+          <span className="ml-1 text-[10px] text-gray-400">
+            {selectedStatuses.length} selected
+            <button
+              type="button"
+              onClick={() => updateArrayParam('status', [])}
+              className="ml-1 text-blue-500 hover:text-blue-700"
+            >
+              clear
+            </button>
+          </span>
+        )}
       </div>
 
       {/* Search + filter bar */}
@@ -483,8 +503,20 @@ export function JobsPage() {
             value={searchQuery}
             onChange={(e) => updateParam('q', e.target.value)}
             placeholder="Search job ID, run ID, or config name..."
-            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-700 placeholder-gray-400 focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-200"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-8 text-sm text-gray-700 placeholder-gray-400 focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-200"
           />
+          {/* Help tooltip */}
+          {!searchQuery && (
+            <div className="group absolute right-2 top-1/2 -translate-y-1/2">
+              <span className="cursor-help rounded-full text-xs text-gray-300 hover:text-gray-500">?</span>
+              <div className="pointer-events-none absolute right-0 top-full z-20 mt-1 hidden w-56 rounded-lg border border-gray-200 bg-white p-2.5 text-xs text-gray-500 shadow-lg group-hover:block">
+                <p className="mb-1 font-medium text-gray-700">Search examples:</p>
+                <p><span className="font-mono text-blue-600">41440745</span> — job by ID</p>
+                <p><span className="font-mono text-blue-600">41440745.123</span> — by run ID</p>
+                <p><span className="font-mono text-blue-600">sfdc</span> — by component or config name</p>
+              </div>
+            </div>
+          )}
           {searchQuery && (
             <button
               type="button"
@@ -504,11 +536,27 @@ export function JobsPage() {
             label="Component"
             options={componentOptions}
             selected={selectedComponents}
-            onChange={(v) => updateArrayParam('component', v)}
+            onChange={(v) => {
+              updateArrayParam('component', v);
+              // Clear config filter when component changes
+              if (v.length !== 1) updateArrayParam('config', []);
+            }}
             searchable
             multiple
             grouped
           />
+
+          {/* Configuration dropdown — visible when exactly 1 component is selected */}
+          {singleComponentId && configOptions.length > 0 && (
+            <FilterDropdown
+              label="Configuration"
+              options={configOptions}
+              selected={selectedConfigs}
+              onChange={(v) => updateArrayParam('config', v)}
+              searchable
+              multiple
+            />
+          )}
 
           <FilterDropdown
             label="Time Range"
