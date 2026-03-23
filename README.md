@@ -72,6 +72,28 @@ Configuration descriptions render as rich Markdown with full GFM support:
 - **Documentation card** — compact preview with "View full documentation" link, no inline expand (page stays stable)
 - **Inline editor** — Write/Preview/Side-by-side modes with toolbar (bold, italic, heading, link, code, mermaid template)
 
+### Job Search & Filters
+URL-driven job filtering with full Queue API support:
+- **Status pills** — color-coded multi-select toggles (Processing, Success, Error, Warning...)
+- **Component filter** — searchable dropdown grouped by type (Data Sources, Transformations, etc.)
+- **Configuration filter** — cascading dropdown, appears when a component is selected
+- **Time Range** — preset ranges (1h, 24h, 7d, 30d, 90d)
+- **Duration** — filter by execution time (0-2min through >1h)
+- **Search** — by job ID, run ID, or component/config name with help tooltip
+- **More filters** — Triggered by (token), Job type
+- **Sortable columns** — click headers to sort by Created or Duration
+- **Active filter tags** — removable chips showing current filters
+- **Bookmarkable** — all filters persisted in URL search params
+
+### Transformation Phase Analysis
+Detailed performance breakdown for Snowflake transformation jobs:
+- **Gantt-style timeline** — sequential bar showing Setup, Input, SQL blocks, Output, Cleanup
+- **SQL block detail** — per-block timing with staircase query visualization
+- **Input/Output tables** — clone vs copy distinction, per-table rows/size/duration
+- **SLOWEST block badge** — highlights the bottleneck
+- **Event position marker** — red indicator synced with EventsViewer scroll
+- **Collapsible** — collapsed by default, "click for detail" to expand
+
 ### Design System
 Keboola Product Design System from Figma with 10 color palettes, Inter typography, and component tokens. Toggle between default and branded theme at runtime.
 
@@ -90,7 +112,8 @@ Keboola Product Design System from Figma with 10 color palettes, Inter typograph
 | Config Detail | `/components/:componentId/:configId` | JSON config, rows |
 | Flows | `/flows` | Orchestration flows |
 | Transformations | `/transformations` | Transformation components |
-| Jobs | `/jobs` | Job history with status filters |
+| Jobs | `/jobs` | Job history with advanced search filters |
+| Job Detail | `/jobs/:jobId` | 4 layout variants, transformation phase analysis |
 | Settings | `/settings` | Token info, permissions, features |
 
 ## Tech Stack
@@ -108,6 +131,7 @@ npm run dev          # Dev server on http://localhost:5173
 npm run build        # Production build to dist/
 npm run preview      # Preview production build
 npm run type-check   # TypeScript type checking
+npm run test         # Run 191 tests
 ```
 
 ## Architecture
