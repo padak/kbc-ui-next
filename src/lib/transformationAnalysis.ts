@@ -28,7 +28,10 @@ export type InputTable = {
 };
 
 export type SqlQuery = {
+  /** Truncated SQL for UI display */
   sql: string;
+  /** Full SQL text for export/analysis */
+  fullSql: string;
   startTime: string;
   durationMs: number;
   tableName?: string;
@@ -247,6 +250,7 @@ export function analyzeTransformation(
 
       const query: SqlQuery = {
         sql: sqlPreview,
+        fullSql: rawSql,
         startTime: e.created,
         durationMs: 0, // Will be inferred below
         tableName,

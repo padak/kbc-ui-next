@@ -194,7 +194,7 @@ export function JobDetailPage() {
         const isTransformation = isCompleted && job.component.includes('transformation');
         const phaseBar = isCompleted
           ? isTransformation
-            ? <TransformationAnalyzer job={job} events={jobEvents} currentTime={visibleEventTime} />
+            ? <TransformationAnalyzer job={job} events={jobEvents} currentTime={visibleEventTime} hasMoreEvents={!!hasNextPage} onLoadAllEvents={handleJumpToStart} isLoadingAllEvents={isJumpingToStart} />
             : <PhaseTimeline job={job} events={jobEvents} currentTime={visibleEventTime} />
           : undefined;
         const props = { job, result, credits, backendSize, eventsProps, phaseBar };

@@ -56,6 +56,25 @@ export const TRANSFORMATION_DISPLAY = {
   defaultVisibleQueries: 10,
 } as const;
 
+// -- Profiler export: AI prompt preamble --
+// Included at the top of the "detailed" export so users can paste directly into an AI chat.
+
+export const PROFILER_AI_PROMPT = `You are analyzing a Keboola Snowflake transformation job profiler output.
+
+This job runs SQL queries against a Snowflake data warehouse. The pipeline has these phases:
+1. **Setup** — provision a Snowflake workspace
+2. **Input** — clone/copy source tables into the workspace (parallel, via Keboola Storage)
+3. **SQL Execution** — run user SQL blocks sequentially (each block = a named set of queries)
+4. **Output** — export result tables back to Keboola Storage (parallel)
+5. **Cleanup** — drop the workspace
+
+Below is the detailed profiler output. Please:
+- Identify the biggest time bottlenecks
+- Suggest specific optimizations (query rewrites, input reduction, parallelization)
+- Flag any queries that seem disproportionately slow for their operation
+- Note if the input/output phase is a significant portion of total time
+` as const;
+
 // -- Clone/copy message parsing patterns --
 // Matches: "Cloned table {source} into workspace {ws} as {name}"
 // or: "Loaded table {source} into workspace {ws} as {name}"

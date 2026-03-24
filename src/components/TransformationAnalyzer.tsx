@@ -13,7 +13,7 @@ import {
   type TransformationAnalysis,
   type SqlBlock,
 } from '@/lib/transformationAnalysis';
-import { TRANSFORMATION_DISPLAY } from '@/config/transformation';
+import { TRANSFORMATION_DISPLAY, PROFILER_AI_PROMPT } from '@/config/transformation';
 import { PHASE_MIN_PERCENT } from '@/config/phases';
 
 // -- Duration formatting --
@@ -219,10 +219,10 @@ function InputDetail({ analysis }: { analysis: TransformationAnalysis }) {
       )}
       <div className="space-y-0.5">
         {visible.map((t, i) => (
-          <div key={i} className="flex items-center gap-2 font-mono text-[11px]">
-            <span className="w-36 truncate text-neutral-600" title={t.source}>{t.name}</span>
-            <span className={`w-8 text-right ${t.method === 'copy' ? 'text-blue-600 font-medium' : 'text-neutral-400'}`}>{t.method}</span>
-            <span className="w-10 text-right text-neutral-500">{fmtSec(t.durationSeconds)}</span>
+          <div key={i} className="flex items-center gap-2 font-mono text-[11px] flex-nowrap">
+            <span className="w-36 min-w-0 shrink-0 truncate text-neutral-600" title={t.source}>{t.name}</span>
+            <span className={`w-8 shrink-0 whitespace-nowrap text-right ${t.method === 'copy' ? 'text-blue-600 font-medium' : 'text-neutral-400'}`}>{t.method}</span>
+            <span className="w-12 shrink-0 whitespace-nowrap text-right text-neutral-500">{fmtSec(t.durationSeconds)}</span>
           </div>
         ))}
       </div>
@@ -291,9 +291,9 @@ function SqlBlockDetail({ block, isSlowest }: { block: SqlBlock; isSlowest: bool
             const widthPct = Math.max((q.durationMs / totalBlockMs) * 100, 0.5);
 
             return (
-              <div key={i} className="flex items-center gap-0 text-[11px] font-mono" title={q.sql}>
-                <span className="w-48 shrink-0 truncate pr-1 text-neutral-600">{label}</span>
-                <span className="w-6 shrink-0 text-right text-neutral-500">{fmtMs(q.durationMs)}</span>
+              <div key={i} className="flex items-center gap-0 text-[11px] font-mono flex-nowrap" title={q.sql}>
+                <span className="w-48 min-w-0 shrink-0 truncate pr-1 text-neutral-600">{label}</span>
+                <span className="w-14 shrink-0 whitespace-nowrap text-right text-neutral-500">{fmtMs(q.durationMs)}</span>
                 <div className="relative ml-1 h-4 flex-1">
                   <div
                     className="absolute top-0.5 h-3 rounded-sm bg-green-400"
@@ -362,15 +362,177 @@ function OutputDetail({ analysis }: { analysis: TransformationAnalysis }) {
   );
 }
 
+// -- Profiler text export --
+
+function profilerHeader(job: Job, analysis: TransformationAnalysis): string {
+  const lines: string[] = [];
+  lines.push(`# Keboola Job Profiler`);
+  lines.push(`Job ID: ${job.id}`);
+  lines.push(`Component: ${job.component}`);
+  lines.push(`Config: ${job.config ?? '-'}`);
+  lines.push(`Status: ${job.status}`);
+  lines.push(`Total duration: ${fmtMs(analysis.totalDurationMs || (job.durationSeconds ?? 0) * 1000)}`);
+  lines.push(`Created: ${job.createdTime}`);
+  if (job.startTime) lines.push(`Started: ${job.startTime}`);
+  if (job.endTime) lines.push(`Ended: ${job.endTime}`);
+  lines.push('');
+  return lines.join('\n');
+}
+
+function profilerPhases(analysis: TransformationAnalysis): string {
+  const lines: string[] = ['## Phase Breakdown', ''];
+  const total = analysis.totalDurationMs || 1;
+  const phase = (name: string, p: { durationMs: number } | null, extra?: string) => {
+    if (!p) return;
+    const pct = ((p.durationMs / total) * 100).toFixed(1);
+    lines.push(`- ${name}: ${fmtMs(p.durationMs)} (${pct}%)${extra ? ' ' + extra : ''}`);
+  };
+  phase('Setup', analysis.setup);
+  phase('Input', analysis.input, analysis.input ? `— ${analysis.input.tables.length} tables (${analysis.input.cloneCount} cloned, ${analysis.input.copyCount} copied)` : undefined);
+  phase('SQL Execution', analysis.sql, analysis.sql ? `— ${analysis.sql.blocks.length} blocks, ${analysis.sql.totalQueries} queries` : undefined);
+  phase('Output', analysis.output, analysis.output ? `— ${analysis.output.tables.length} tables` : undefined);
+  phase('Cleanup', analysis.cleanup);
+  lines.push('');
+  return lines.join('\n');
+}
+
+function profilerInputTables(analysis: TransformationAnalysis): string {
+  if (!analysis.input || analysis.input.tables.length === 0) return '';
+  const lines: string[] = ['## Input Tables', ''];
+  const sorted = [...analysis.input.tables].sort((a, b) => (b.durationSeconds ?? 0) - (a.durationSeconds ?? 0));
+  for (const t of sorted) {
+    lines.push(`- ${t.name} (${t.method}) ${fmtSec(t.durationSeconds)} — source: ${t.source}`);
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
+function profilerSqlSummary(analysis: TransformationAnalysis): string {
+  if (!analysis.sql) return '';
+  const lines: string[] = ['## SQL Blocks', ''];
+  for (const block of analysis.sql.blocks) {
+    lines.push(`### ${block.name} — ${fmtMs(block.durationMs)} (${block.queries.length} queries)`);
+    for (const q of block.queries) {
+      const label = q.tableName ?? q.sql.substring(0, 60).replace(/\n/g, ' ');
+      lines.push(`  - ${label}: ${fmtMs(q.durationMs)}`);
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+function profilerSqlDetailed(analysis: TransformationAnalysis): string {
+  if (!analysis.sql) return '';
+  const lines: string[] = ['## SQL Queries (detailed)', ''];
+  for (const block of analysis.sql.blocks) {
+    lines.push(`### ${block.name} — ${fmtMs(block.durationMs)} (${block.queries.length} queries)`);
+    lines.push('');
+    for (let i = 0; i < block.queries.length; i++) {
+      const q = block.queries[i]!;
+      lines.push(`**Query ${i + 1}** — ${fmtMs(q.durationMs)}${q.tableName ? ` (table: ${q.tableName})` : ''}`);
+      lines.push('```sql');
+      lines.push(q.fullSql);
+      lines.push('```');
+      lines.push('');
+    }
+  }
+  return lines.join('\n');
+}
+
+function profilerOutputTables(analysis: TransformationAnalysis): string {
+  if (!analysis.output || analysis.output.tables.length === 0) return '';
+  const lines: string[] = ['## Output Tables', ''];
+  const sorted = [...analysis.output.tables].sort((a, b) => (b.durationSeconds ?? 0) - (a.durationSeconds ?? 0));
+  for (const t of sorted) {
+    const parts = [t.name];
+    if (t.durationSeconds != null) parts.push(fmtSec(t.durationSeconds));
+    if (t.rowsCount != null) parts.push(`${formatNumber(t.rowsCount)} rows`);
+    if (t.sizeBytes != null) parts.push(formatBytes(t.sizeBytes));
+    lines.push(`- ${parts.join(' — ')}`);
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
+/** Compact summary — quick stats for clipboard */
+function generateProfilerSummary(job: Job, analysis: TransformationAnalysis): string {
+  return [
+    profilerHeader(job, analysis),
+    profilerPhases(analysis),
+    profilerInputTables(analysis),
+    profilerSqlSummary(analysis),
+    profilerOutputTables(analysis),
+  ].join('');
+}
+
+/** Detailed export with AI prompt preamble */
+function generateProfilerDetail(job: Job, analysis: TransformationAnalysis): string {
+  return [
+    PROFILER_AI_PROMPT,
+    '---\n\n',
+    profilerHeader(job, analysis),
+    profilerPhases(analysis),
+    profilerInputTables(analysis),
+    profilerSqlDetailed(analysis),
+    profilerOutputTables(analysis),
+  ].join('');
+}
+
+// -- Copy button with feedback --
+
+function CopyButton({ label, getText }: { label: string; getText: () => string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(getText());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback: download as file
+      const blob = new Blob([getText()], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'job-profiler.md';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={handleCopy}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCopy(e as unknown as React.MouseEvent); }}
+      className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors cursor-pointer ${
+        copied
+          ? 'bg-green-100 text-green-700'
+          : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600'
+      }`}
+    >
+      {copied ? 'Copied!' : label}
+    </span>
+  );
+}
+
 // -- Main component --
 
 type TransformationAnalyzerProps = {
   job: Job;
   events: KeboolaEvent[];
   currentTime?: string | null;
+  /** Whether more event pages are available (not all loaded yet) */
+  hasMoreEvents?: boolean;
+  /** Callback to load all remaining events */
+  onLoadAllEvents?: () => void;
+  /** Whether events are currently being bulk-loaded */
+  isLoadingAllEvents?: boolean;
 };
 
-export function TransformationAnalyzer({ job, events, currentTime }: TransformationAnalyzerProps) {
+export function TransformationAnalyzer({ job, events, currentTime, hasMoreEvents, onLoadAllEvents, isLoadingAllEvents }: TransformationAnalyzerProps) {
   const [expanded, setExpanded] = useState(false);
   const analysis = useMemo(() => analyzeTransformation(job, events), [job, events]);
   const segments = useMemo(() => buildGanttSegments(analysis), [analysis]);
@@ -399,8 +561,16 @@ export function TransformationAnalyzer({ job, events, currentTime }: Transformat
               <span className="text-[10px] text-neutral-400">click for detail</span>
             )}
           </div>
-          <span className="font-mono text-[11px] text-neutral-500">
-            {fmtMs(analysis.totalDurationMs || ((job.durationSeconds ?? 0) * 1000))}
+          <span className="flex items-center gap-2">
+            {hasDetail && (
+              <>
+                <CopyButton label="Copy Stats" getText={() => generateProfilerSummary(job, analysis)} />
+                <CopyButton label="Copy for AI" getText={() => generateProfilerDetail(job, analysis)} />
+              </>
+            )}
+            <span className="font-mono text-[11px] text-neutral-500">
+              {fmtMs(analysis.totalDurationMs || ((job.durationSeconds ?? 0) * 1000))}
+            </span>
           </span>
         </div>
         {hasDetail ? (
@@ -415,7 +585,24 @@ export function TransformationAnalyzer({ job, events, currentTime }: Transformat
             {events.length === 0
               ? 'Loading events...'
               : partialEvents
-                ? 'Load All events above for detailed phase breakdown'
+                ? (
+                  <span className="flex items-center gap-2">
+                    <span>All events needed for detailed phase breakdown.</span>
+                    {isLoadingAllEvents ? (
+                      <span className="text-neutral-500">Loading events...</span>
+                    ) : hasMoreEvents && onLoadAllEvents ? (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); onLoadAllEvents(); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onLoadAllEvents(); } }}
+                        className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer"
+                      >
+                        Load All Events
+                      </span>
+                    ) : null}
+                  </span>
+                )
                 : 'No phase data available'}
           </div>
         )}
