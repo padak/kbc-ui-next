@@ -181,6 +181,7 @@ export function ConfigurationDetailPage() {
   const { getComponentName, getComponentIcon, getConfigName } = useComponentLookup();
 
   const isFlow = componentId === 'keboola.orchestrator' || componentId === 'keboola.flow';
+  const isConditionalFlow = componentId === 'keboola.flow';
   const isTransformation = component?.type === 'transformation';
 
   if (isLoading) {
@@ -296,7 +297,12 @@ export function ConfigurationDetailPage() {
       {isFlow && config.configuration && (
         <div className="mb-6">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Flow Builder</h2>
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+              {isConditionalFlow ? 'Conditional Flow' : 'Flow Builder'}
+              {isConditionalFlow && (
+                <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700">Beta</span>
+              )}
+            </h2>
             <FlowCopyButtons
               configuration={config.configuration as Record<string, unknown>}
               lookup={{ getComponentName, getConfigName }}
@@ -309,8 +315,8 @@ export function ConfigurationDetailPage() {
         </div>
       )}
 
-      {/* Flow Editor (for orchestrator/flow components) */}
-      {isFlow && config.configuration && (
+      {/* Flow Editor (for orchestrator components only — Conditional Flows have different structure) */}
+      {isFlow && !isConditionalFlow && config.configuration && (
         <FlowEditor
           configuration={config.configuration as Record<string, unknown>}
           onSave={async (newConfig) => {

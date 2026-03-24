@@ -85,6 +85,7 @@ export function FlowsPage() {
   const { data: flows, isLoading, error } = useFlows();
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<'flows' | 'conditional'>('flows');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   const toggleFolder = (folder: string) => {
@@ -108,7 +109,12 @@ export function FlowsPage() {
     return true;
   });
 
-  const grouped = groupByFolder(filtered ?? []);
+  // Split into regular Flows (orchestrator) and Conditional Flows (keboola.flow)
+  const regularFlows = filtered?.filter((f) => f.componentId === 'keboola.orchestrator') ?? [];
+  const conditionalFlows = filtered?.filter((f) => f.componentId === 'keboola.flow') ?? [];
+
+  const activeItems = tab === 'flows' ? regularFlows : conditionalFlows;
+  const grouped = groupByFolder(activeItems);
   const hasFolders = grouped.some(g => g.folder !== '');
 
   function renderFlowTable(items: FlowItem[]) {
@@ -189,29 +195,57 @@ export function FlowsPage() {
         description={`${flows?.length ?? 0} flows`}
       />
 
-      <div className="mb-4 flex gap-2">
-        {FILTERS.map((f) => (
+      {/* Tabs: Flows / Conditional Flows */}
+      {!isLoading && (regularFlows.length > 0 || conditionalFlows.length > 0) && conditionalFlows.length > 0 && (
+        <div className="mb-3 flex items-center gap-0 border-b border-gray-200">
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              filter === f
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            onClick={() => setTab('flows')}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
+              tab === 'flows'
+                ? 'border-b-2 border-blue-500 text-blue-700'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {f === 'all' ? 'All' : f === 'not-scheduled' ? 'Not Scheduled' : f.charAt(0).toUpperCase() + f.slice(1)}
+            Flows ({regularFlows.length})
           </button>
-        ))}
-      </div>
+          <button
+            onClick={() => setTab('conditional')}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+              tab === 'conditional'
+                ? 'border-b-2 border-purple-500 text-purple-700'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Conditional ({conditionalFlows.length})
+            <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[9px] font-medium text-purple-600">Beta</span>
+          </button>
+        </div>
+      )}
 
-      <input
-        type="text"
-        placeholder="Search flows..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="mb-4 w-full max-w-sm rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-      />
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex gap-2">
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                filter === f
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {f === 'all' ? 'All' : f === 'not-scheduled' ? 'Not Scheduled' : f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+        <input
+          type="text"
+          placeholder="Search flows..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-sm rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+      </div>
 
       {error && (
         <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error.message}</div>
@@ -219,26 +253,9 @@ export function FlowsPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12 text-gray-400">Loading flows...</div>
-      ) : !filtered?.length ? (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Schedule</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Last Change</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Last Run</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
-                  No flows found
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      ) : activeItems.length === 0 ? (
+        <div className="rounded-lg border border-gray-200 px-4 py-8 text-center text-sm text-gray-400">
+          No {tab === 'conditional' ? 'conditional ' : ''}flows found
         </div>
       ) : (
         <div className="space-y-4">
@@ -258,11 +275,10 @@ export function FlowsPage() {
               ) : (
                 hasFolders && (
                   <p className="mb-2 mt-2 rounded bg-gray-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                    Flows without folder
+                    Without folder
                   </p>
                 )
               )}
-
               {(!group.folder || expandedFolders.has(group.folder)) && renderFlowTable(group.items)}
             </div>
           ))}

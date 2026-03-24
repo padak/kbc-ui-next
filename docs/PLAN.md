@@ -121,6 +121,8 @@ The two complex UIs that need custom implementation.
 - [x] **CodeMirror 6** - SQL syntax highlighting, table/column autocomplete, one-dark theme
 - [x] **Phase/Block editor** - add/remove/rename/disable phases and blocks, impact analysis
 - [x] **Block disable** - comment-based disable with output mapping handling (see business-logic-audit.md)
+- [x] **Conditional Flows (keboola.flow)** - read-only visualization with condition labels on edges, "End" node for goto:null, purple condition edges, red dashed end edges. Flows page split into Flows/Conditional tabs. Mermaid/Text export respects next[] transitions.
+- [ ] **Conditional Flow editing** - editing phases, tasks, conditions, retry, delay for keboola.flow configs. Currently read-only + JSON editor only.
 
 ### Future: AI-driven flow orchestration
 Instead of drag-and-drop, use prompt-driven flow editing:
@@ -231,8 +233,10 @@ For jobs with no events (fast jobs, failed early): show only preparation + total
 - [x] **I/O metrics summary** — total tables, rows, bytes from `tableImportDone` events shown below phase bar.
 
 **Transformation jobs** (additionally):
-- [ ] **Block timing** — parse events for block execution markers. Show per-block duration in the phase/block tree. Requires message pattern matching (e.g., "Running block X" events).
-- [ ] **SQL statement timing** — if events contain per-statement metrics, show execution time per SQL statement in the editor.
+- [x] **Block timing** — parse events for block execution markers. Per-block duration with staircase query visualization. TransformationAnalyzer component with Gantt bar, SQL block detail, input/output tables.
+- [x] **SQL statement timing** — per-query duration inferred from event timestamps. Expandable per-block with table name extraction.
+- [x] **Profiler export** — "Copy Stats" (compact summary) and "Copy for AI" (full SQL + AI prompt preamble) buttons.
+- [x] **Load All Events** — inline button in TransformationAnalyzer when partial events prevent analysis.
 
 **Flow jobs** (orchestration containers):
 - [ ] **Child job timeline** — query child jobs via `parentRunId`, build Gantt-style timeline showing parallel phase execution. Each phase = horizontal lane, tasks = bars with start/end.

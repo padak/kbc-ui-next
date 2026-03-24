@@ -55,6 +55,8 @@ Full-featured SQL editor for Snowflake, Python, and other transformation types:
 ### Flow Builder
 Visual DAG editor for orchestration flows using @xyflow/react with automatic ELK layout. Add/remove phases and tasks, export as Mermaid or text for AI context.
 
+**Conditional Flows** (`keboola.flow`): read-only visualization with condition labels on edges (purple for conditions, red dashed for end/termination). Flows page splits into tabbed Flows/Conditional views. Mermaid and text export include condition transitions and end nodes.
+
 ### Schema-Driven Config Editor
 Generic JSON Schema to form renderer for all component configurations. Supports nested objects, arrays, enums, passwords, and toggles between form and raw JSON views.
 

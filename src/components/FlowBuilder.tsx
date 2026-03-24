@@ -52,22 +52,23 @@ type FlowBuilderProps = {
 };
 
 type RawPhase = {
-  id: number;
+  id: number | string;
   name: string;
-  dependsOn: number[];
+  dependsOn?: (number | string)[];
+  next?: Array<{ id: string; goto: string | null; name?: string; condition?: unknown }>;
 };
 
 type RawTask = {
-  id: number;
+  id: number | string;
   name: string;
-  phase: number;
+  phase: number | string;
   task: {
     componentId: string;
     configId: string;
     mode: string;
   };
-  continueOnFailure: boolean;
-  enabled: boolean;
+  continueOnFailure?: boolean;
+  enabled?: boolean;
 };
 
 // -- ELK Layout --
@@ -108,8 +109,8 @@ async function getLayoutedElements(
     },
     children: nodes.map((n) => ({
       id: n.id,
-      width: estimateNodeWidth(n.data.tasks?.length ?? 0),
-      height: estimateNodeHeight(n.data.tasks?.length ?? 0),
+      width: n.type === 'endNode' ? 80 : estimateNodeWidth(n.data.tasks?.length ?? 0),
+      height: n.type === 'endNode' ? 40 : estimateNodeHeight(n.data.tasks?.length ?? 0),
     })),
     edges: edges.map((e) => ({
       id: e.id,
@@ -132,6 +133,7 @@ async function getLayoutedElements(
 // -- Phase Node Component --
 
 function PhaseNode({ data }: NodeProps<Node<PhaseNodeData>>) {
+  const tasks = data.tasks ?? [];
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-md">
       <Handle type="target" position={Position.Top} className="!bg-gray-300 !w-2 !h-2" />
@@ -139,28 +141,40 @@ function PhaseNode({ data }: NodeProps<Node<PhaseNodeData>>) {
         {data.name}
       </div>
       <div className="p-2">
-        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(data.tasks.length, TASK_COLS)}, ${TASK_WIDTH}px)` }}>
-          {data.tasks.map((task) => (
-            <div
-              key={task.id}
-              className={`flex items-center gap-2 rounded-md border border-gray-100 bg-white px-2.5 py-2 shadow-sm ${
-                task.enabled ? '' : 'opacity-40'
-              }`}
-              style={{ width: TASK_WIDTH }}
-            >
-              {task.icon && <img src={task.icon} className="h-5 w-5 shrink-0 rounded" alt="" />}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[11px] font-medium text-gray-900">{task.configName}</p>
-                <p className="truncate text-[9px] text-gray-400">{task.componentName}</p>
+        {tasks.length > 0 ? (
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(tasks.length, TASK_COLS)}, ${TASK_WIDTH}px)` }}>
+            {tasks.map((task) => (
+              <div
+                key={task.id}
+                className={`flex items-center gap-2 rounded-md border border-gray-100 bg-white px-2.5 py-2 shadow-sm ${
+                  task.enabled ? '' : 'opacity-40'
+                }`}
+                style={{ width: TASK_WIDTH }}
+              >
+                {task.icon && <img src={task.icon} className="h-5 w-5 shrink-0 rounded" alt="" />}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11px] font-medium text-gray-900">{task.configName}</p>
+                  <p className="truncate text-[9px] text-gray-400">{task.componentName}</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-        {data.tasks.length === 0 && (
+            ))}
+          </div>
+        ) : (
           <p className="py-2 text-center text-[10px] text-gray-400">No tasks</p>
         )}
       </div>
       <Handle type="source" position={Position.Bottom} className="!bg-gray-300 !w-2 !h-2" />
+    </div>
+  );
+}
+
+// -- End Node Component (for Conditional Flow "goto: null" termination) --
+
+function EndNode() {
+  return (
+    <div className="rounded-full border-2 border-dashed border-red-300 bg-red-50 px-4 py-2">
+      <Handle type="target" position={Position.Top} className="!bg-red-300 !w-2 !h-2" />
+      <span className="text-[10px] font-semibold text-red-500">End</span>
     </div>
   );
 }
@@ -174,17 +188,17 @@ function parseConfiguration(
   const phases = (configuration.phases as RawPhase[] | undefined) ?? [];
   const tasks = (configuration.tasks as RawTask[] | undefined) ?? [];
 
-  // Group tasks by phase
-  const tasksByPhase = new Map<number, TaskData[]>();
+  // Group tasks by phase (support both number and string IDs)
+  const tasksByPhase = new Map<string, TaskData[]>();
   for (const task of tasks) {
-    const phaseId = task.phase;
-    if (!tasksByPhase.has(phaseId)) {
-      tasksByPhase.set(phaseId, []);
+    const phaseKey = String(task.phase);
+    if (!tasksByPhase.has(phaseKey)) {
+      tasksByPhase.set(phaseKey, []);
     }
     const componentId = task.task?.componentId ?? '';
     const configId = task.task?.configId ?? '';
-    tasksByPhase.get(phaseId)!.push({
-      id: task.id,
+    tasksByPhase.get(phaseKey)!.push({
+      id: task.id as number,
       name: task.name,
       componentId,
       configId,
@@ -204,11 +218,11 @@ function parseConfiguration(
     position: { x: 0, y: 0 }, // will be set by ELK
     data: {
       name: phase.name,
-      tasks: tasksByPhase.get(phase.id) ?? [],
+      tasks: tasksByPhase.get(String(phase.id)) ?? [],
     },
   }));
 
-  // Build edges from dependsOn
+  // Build edges from dependsOn (keboola.orchestrator)
   const edges: Edge[] = [];
   for (const phase of phases) {
     if (phase.dependsOn && phase.dependsOn.length > 0) {
@@ -224,7 +238,58 @@ function parseConfiguration(
     }
   }
 
-  // If no dependsOn edges exist, create sequential edges (fallback for keboola.flow)
+  // Build edges from next[] conditions (keboola.flow / Conditional Flows)
+  const hasNextTransitions = phases.some((p) => p.next && p.next.length > 0);
+  if (edges.length === 0 && hasNextTransitions) {
+    let hasEndNode = false;
+    for (const phase of phases) {
+      if (phase.next && phase.next.length > 0) {
+        for (const transition of phase.next) {
+          if (transition.goto) {
+            // Edge to another phase — show condition name
+            const hasCondition = !!transition.condition;
+            const label = transition.name ?? '';
+            edges.push({
+              id: `e-${phase.id}-${transition.goto}-${transition.id}`,
+              source: String(phase.id),
+              target: String(transition.goto),
+              label: label || undefined,
+              labelStyle: { fontSize: 9, fill: hasCondition ? '#7c3aed' : '#6b7280' },
+              labelBgStyle: hasCondition ? { fill: '#f5f3ff', fillOpacity: 0.9 } : undefined,
+              labelBgPadding: [4, 2] as [number, number],
+              markerEnd: { type: MarkerType.ArrowClosed, color: hasCondition ? '#7c3aed' : '#94a3b8' },
+              style: { stroke: hasCondition ? '#7c3aed' : '#94a3b8', strokeWidth: 1.5 },
+            });
+          } else {
+            // goto: null = end of flow
+            if (!hasEndNode) {
+              nodes.push({
+                id: '__end__',
+                type: 'endNode',
+                position: { x: 0, y: 0 },
+                data: { name: 'End', tasks: [] },
+              });
+              hasEndNode = true;
+            }
+            const label = transition.name ?? 'End';
+            edges.push({
+              id: `e-${phase.id}-end-${transition.id}`,
+              source: String(phase.id),
+              target: '__end__',
+              label,
+              labelStyle: { fontSize: 9, fill: '#dc2626' },
+              labelBgStyle: { fill: '#fef2f2', fillOpacity: 0.9 },
+              labelBgPadding: [4, 2] as [number, number],
+              markerEnd: { type: MarkerType.ArrowClosed, color: '#dc2626' },
+              style: { stroke: '#dc2626', strokeWidth: 1.5, strokeDasharray: '6 3' },
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback: if still no edges, create sequential edges
   if (edges.length === 0 && phases.length > 1) {
     for (let i = 0; i < phases.length - 1; i++) {
       const current = phases[i]!;
@@ -248,7 +313,7 @@ export type { PhaseNodeData, FlowBuilderProps, TaskData, RawPhase, RawTask };
 
 // -- Main Component --
 
-const nodeTypes: NodeTypes = { phaseNode: PhaseNode };
+const nodeTypes: NodeTypes = { phaseNode: PhaseNode, endNode: EndNode };
 
 export function FlowBuilder({ configuration, componentLookup }: FlowBuilderProps) {
   const { nodes: initialNodes, edges } = useMemo(
