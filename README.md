@@ -93,6 +93,9 @@ Detailed performance breakdown for Snowflake transformation jobs:
 - **SLOWEST block badge** — highlights the bottleneck
 - **Event position marker** — red indicator synced with EventsViewer scroll
 - **Collapsible** — collapsed by default, "click for detail" to expand
+- **Copy Stats** — copy compact profiler summary (phases, tables, query timings) to clipboard
+- **Copy for AI** — export full profiler with AI prompt preamble and complete SQL for AI-assisted optimization analysis
+- **Load All Events** — inline button to load all events when partial data prevents analysis
 
 ### Design System
 Keboola Product Design System from Figma with 10 color palettes, Inter typography, and component tokens. Toggle between default and branded theme at runtime.
