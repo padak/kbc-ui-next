@@ -261,3 +261,49 @@ export async function fetchServiceApi<T>(
 
   return result.data;
 }
+
+// -- FormData upload to import service --
+
+export async function fetchImportApi<T>(
+  path: string,
+  schema: z.ZodSchema<T>,
+  body: FormData,
+  signal?: AbortSignal,
+): Promise<T> {
+  const { stackUrl, token } = getConnectionOrThrow();
+  const serviceBase = deriveServiceUrl(stackUrl, 'import');
+  const url = `${serviceBase}${path}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { [HTTP_HEADERS.STORAGE_API_TOKEN]: token },
+    body,
+    signal,
+  });
+
+  if (!response.ok) {
+    let errorBody: { message?: string; code?: string } = {};
+    try {
+      errorBody = await response.json();
+    } catch {
+      // not JSON
+    }
+    throw new KeboolaApiError(
+      errorBody.message ?? `API error: ${response.status} ${response.statusText}`,
+      response.status,
+      errorBody.code ?? 'UNKNOWN',
+    );
+  }
+
+  const data = await response.json();
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const curl = buildCurlCommand(url, token);
+    if (import.meta.env.DEV) {
+      console.error('[Keboola] Validation failed for', path, result.error.issues);
+    }
+    throw new KeboolaValidationError(path, result.error, data, curl);
+  }
+
+  return result.data;
+}

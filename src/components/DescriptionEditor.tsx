@@ -161,27 +161,19 @@ export function DescriptionEditor({ value, onSave, onCancel, isSaving }: Descrip
         return;
       }
 
-      // Generate filename
-      const ext = imageFile.type.split('/')[1]?.replace('jpeg', 'jpg') ?? 'png';
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
-      const fileName = `doc-image-${timestamp}.${ext}`;
-
-      // Show placeholder while uploading
       const textarea = textareaRef.current;
       if (!textarea) return;
 
-      const placeholder = `![Uploading ${fileName}...](uploading)`;
+      const placeholder = `![Uploading image…](uploading)`;
       insertTextAtCursor(textarea, placeholder, draft, setDraft);
       setUploading(true);
 
       try {
-        const { fileId, fileName: uploadedName } = await uploadImageToStorage(imageFile, fileName);
-        const imageRef = `![${uploadedName}](${KBC_FILE_PROTOCOL}${fileId}/${uploadedName})`;
+        const { fileId, fileName: uploadedName } = await uploadImageToStorage(imageFile);
+        const imageRef = `![${uploadedName}](${KBC_FILE_PROTOCOL}${fileId}/${encodeURIComponent(uploadedName)})`;
 
-        // Replace placeholder with actual reference
         setDraft((prev) => prev.replace(placeholder, imageRef));
       } catch (err) {
-        // Remove placeholder on error
         setDraft((prev) => prev.replace(placeholder, ''));
         setUploadError(err instanceof Error ? err.message : 'Image upload failed');
       } finally {
