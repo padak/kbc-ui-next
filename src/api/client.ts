@@ -86,11 +86,13 @@ function deriveServiceUrl(stackUrl: string, serviceName: string): string {
 // -- Core fetch (unvalidated) --
 
 async function rawFetch(url: string, token: string, options: RequestInit = {}): Promise<unknown> {
+  // When body is FormData, omit Content-Type so the browser sets multipart/form-data with boundary
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(url, {
     ...options,
     headers: {
       [HTTP_HEADERS.STORAGE_API_TOKEN]: token,
-      [HTTP_HEADERS.CONTENT_TYPE]: 'application/json',
+      ...(isFormData ? {} : { [HTTP_HEADERS.CONTENT_TYPE]: 'application/json' }),
       ...options.headers,
     },
   });
@@ -255,6 +257,32 @@ export async function fetchServiceApi<T>(
     const curl = buildCurlCommand(url, token);
     if (import.meta.env.DEV) {
       console.error('[Keboola] Validation failed for', path, result.error.issues);
+    }
+    throw new KeboolaValidationError(path, result.error, data, curl);
+  }
+
+  return result.data;
+}
+
+// -- FormData upload to import service --
+
+export async function fetchImportApi<T>(
+  path: string,
+  schema: z.ZodSchema<T>,
+  body: FormData,
+  signal?: AbortSignal,
+): Promise<T> {
+  const { stackUrl, token } = getConnectionOrThrow();
+  const serviceBase = deriveServiceUrl(stackUrl, 'import');
+  const url = `${serviceBase}${path}`;
+  const data = await rawFetch(url, token, { method: 'POST', body, signal });
+
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const curl = buildCurlCommand(url, token);
+    if (import.meta.env.DEV) {
+      console.error('[Keboola] Validation failed for', path, result.error.issues);
+      console.error('[Keboola] Debug:', curl);
     }
     throw new KeboolaValidationError(path, result.error, data, curl);
   }
