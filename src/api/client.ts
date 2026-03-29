@@ -86,11 +86,13 @@ function deriveServiceUrl(stackUrl: string, serviceName: string): string {
 // -- Core fetch (unvalidated) --
 
 async function rawFetch(url: string, token: string, options: RequestInit = {}): Promise<unknown> {
+  // When body is FormData, omit Content-Type so the browser sets multipart/form-data with boundary
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(url, {
     ...options,
     headers: {
       [HTTP_HEADERS.STORAGE_API_TOKEN]: token,
-      [HTTP_HEADERS.CONTENT_TYPE]: 'application/json',
+      ...(isFormData ? {} : { [HTTP_HEADERS.CONTENT_TYPE]: 'application/json' }),
       ...options.headers,
     },
   });
@@ -273,34 +275,14 @@ export async function fetchImportApi<T>(
   const { stackUrl, token } = getConnectionOrThrow();
   const serviceBase = deriveServiceUrl(stackUrl, 'import');
   const url = `${serviceBase}${path}`;
+  const data = await rawFetch(url, token, { method: 'POST', body, signal });
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { [HTTP_HEADERS.STORAGE_API_TOKEN]: token },
-    body,
-    signal,
-  });
-
-  if (!response.ok) {
-    let errorBody: { message?: string; code?: string } = {};
-    try {
-      errorBody = await response.json();
-    } catch {
-      // not JSON
-    }
-    throw new KeboolaApiError(
-      errorBody.message ?? `API error: ${response.status} ${response.statusText}`,
-      response.status,
-      errorBody.code ?? 'UNKNOWN',
-    );
-  }
-
-  const data = await response.json();
   const result = schema.safeParse(data);
   if (!result.success) {
     const curl = buildCurlCommand(url, token);
     if (import.meta.env.DEV) {
       console.error('[Keboola] Validation failed for', path, result.error.issues);
+      console.error('[Keboola] Debug:', curl);
     }
     throw new KeboolaValidationError(path, result.error, data, curl);
   }
